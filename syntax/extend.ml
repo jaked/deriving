@@ -68,7 +68,7 @@ struct
   EXTEND Gram
   expr: LEVEL "simple"
   [
-  [e1 = val_longident ; "<" ; t = ctyp; ">" ->
+  [e1 = TRY val_longident ; "<" ; t = ctyp; ">" ->
      match e1 with
        | <:ident< $uid:classname$ . $lid:methodname$ >> ->
          if not (Base.is_registered classname) then

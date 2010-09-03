@@ -26,9 +26,9 @@ struct
 
   let unpickle_record_bindings ctxt (tname,params,rhs,cs,_) (fields : field list) e = <:expr<
       let module Mutable = struct
-        type t = $UT.repr 
+        type $Ast.TyDcl (loc, "t", [], UT.repr 
             (instantiate_modargs_repr ctxt 
-               (Record (List.map (fun (n,p,_) -> (n,p,`Mutable)) fields)))$
+               (Record (List.map (fun (n,p,_) -> (n,p,`Mutable)) fields))), [])$
       end in $e$ >>
 
   let unpickle_record ctxt (tname,_,_,_,_ as decl) fields expr = 
@@ -89,7 +89,7 @@ struct
     <:module_expr< struct open Eq open Typeable
                           module T = $tymod$
                           module E = $eqmod$
-                          type a = $atype$
+                          type $Ast.TyDcl (loc, "a", [], atype, [])$
                           open Write
                           let pickle = let module W = Utils(T)(E) in function $list:picklers$
                           open Read

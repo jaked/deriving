@@ -77,13 +77,13 @@ struct
        <:expr<
          let module M = 
              struct
-               type t = $t$
+               type $Ast.TyDcl (loc, "t", [], t, [])$
                let test = function #t -> true | _ -> false
              end in M.test $lid:param$ >>,
        <:expr<
          (let module M = 
               struct
-                type t = $t$
+                type $Ast.TyDcl (loc, "t", [], t, [])$
                 let cast = function #t as t -> t | _ -> assert false
               end in M.cast $lid:param$ )>>)
 

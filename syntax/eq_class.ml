@@ -22,7 +22,7 @@ struct
   let tup ctxt ts mexpr exp = 
       match ts with
         | [t] -> 
-            <:module_expr< struct type a = $atype_expr ctxt (`Tuple ts)$
+            <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype_expr ctxt (`Tuple ts), [])$
                                   let eq l r = let module M = $exp ctxt t$ 
                                    in $mexpr$ l r end >>
         | ts ->
@@ -38,7 +38,7 @@ struct
                 ts
                 (0, (<:patt< >>, <:patt< >>), <:expr< true >>)
             in 
-              <:module_expr< struct type a = $atype_expr ctxt (`Tuple ts)$
+              <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype_expr ctxt (`Tuple ts), [])$
                                     let eq $Ast.PaTup (loc, lpatt)$ $Ast.PaTup (loc, rpatt)$ = $expr$ end >>
 
 
@@ -80,14 +80,14 @@ struct
   method sum ?eq ctxt decl summands =
     let wildcard = match summands with [_] -> [] | _ -> [ <:match_case< _ -> false >>] in
   <:module_expr< 
-      struct type a = $atype ctxt decl$
+      struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
              let eq l r = match l, r with 
                           $list:List.map (self#case ctxt) summands @ wildcard$
   end >>
 
   method record ?eq ctxt decl fields = 
     if List.exists (function (_,_,`Mutable) -> true | _ -> false) fields then
-       <:module_expr< struct type a = $atype ctxt decl$ let eq = (==) end >>
+       <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$ let eq = (==) end >>
     else
     let lpatt = record_pattern ~prefix:"l" fields
     and rpatt = record_pattern ~prefix:"r" fields 
@@ -96,11 +96,11 @@ struct
         (fun f e -> <:expr< $self#field ctxt f$ && $e$ >>)
         fields
         <:expr< true >>
-    in <:module_expr< struct type a = $atype ctxt decl$
+    in <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
                              let eq $lpatt$ $rpatt$ = $expr$ end >>
 
   method variant ctxt decl (spec, tags) = 
-    <:module_expr< struct type a = $atype ctxt decl$
+    <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
                           let eq l r = match l, r with
                                        $list:List.map (self#polycase ctxt) tags$
                                        | _ -> false end >>

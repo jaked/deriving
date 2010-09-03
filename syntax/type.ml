@@ -1,4 +1,4 @@
-(*pp camlp4of *)
+(*pp camlp4orf *)
 
 (* Copyright Jeremy Yallop 2007.
    This file is free software, distributed under the MIT license.
@@ -422,8 +422,8 @@ struct
       | _ -> assert false
     and app f = function
       | []    -> f
-      | [x]   -> <:ctyp< $expr x$ $f$ >>
-      | x::xs -> app (<:ctyp< $expr x$ $f$ >>) xs
+      | [x]   -> <:ctyp< $f$ $expr x$ >>
+      | x::xs -> app (<:ctyp< $f$ $expr x$ >>) xs
     in expr
          
   let poly (params, t) =
@@ -436,10 +436,10 @@ struct
   let rec rhs : rhs -> Ast.ctyp = function
       | `Fresh (None, t, `Private) -> <:ctyp< private $repr t$ >>
       | `Fresh (None, t, `Public) -> repr t
-      | `Fresh (Some e, t, `Private) -> <:ctyp< $expr e$ = private $repr t$ >>
+      | `Fresh (Some e, t, `Private) -> <:ctyp< $expr e$ == private $repr t$ >>
       | `Fresh (Some e, t, `Public) -> Ast.TyMan (loc, expr e, repr t)
       | `Expr t          -> expr t
-      | `Variant (`Eq, tags) -> <:ctyp< [  $unlist bar tags tagspec$ ] >>
+      | `Variant (`Eq, tags) -> <:ctyp< [= $unlist bar tags tagspec$ ] >>
       | `Variant (`Gt, tags) -> <:ctyp< [> $unlist bar tags tagspec$ ] >>
       | `Variant (`Lt, tags) -> <:ctyp< [< $unlist bar tags tagspec$ ] >>
       | `Nothing -> <:ctyp< >>

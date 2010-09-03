@@ -126,6 +126,7 @@ struct
     | TyVrnInfSup (_, c1, c2) -> "TyVrnInfSup ("^ ctyp c1 ^ ", " ^ ctyp c2 ^")"
     | TyAmp (_, c1, c2) -> "TyAmp ("^ ctyp c1 ^ ", " ^ ctyp c2 ^")"
     | TyOfAmp (_, c1, c2) -> "TyOfAmp ("^ ctyp c1 ^ ", " ^ ctyp c2 ^")"
+    | TyPkg (_, mt) -> failwith "first-class modules not supported"
     | TyAnt (_, s) -> "TyAnt("^s^")"
 end
 

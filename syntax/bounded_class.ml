@@ -24,7 +24,7 @@ struct
                     (fun t -> let e = self#expr ctxt t in 
                        <:expr< let module M = $e$ in M.min_bound >>,
                        <:expr< let module M = $e$ in M.max_bound >>) ts) in
-    <:module_expr< struct type a = $atype_expr ctxt (`Tuple ts)$
+    <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype_expr ctxt (`Tuple ts), [])$
                           let min_bound = $tuple_expr minBounds$ 
                           let max_bound = $tuple_expr maxBounds$ end >>
 
@@ -35,7 +35,7 @@ struct
               | (name,_) -> raise (Underivable ("Bounded cannot be derived for the type "^
                                                   tname ^" because the constructor "^
                                                   name^" is not nullary"))) in
-        <:module_expr< struct type a = $atype ctxt decl$
+        <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
                        let min_bound = $uid:List.hd names$ 
                        and max_bound = $uid:List.last names$ end >>
 
@@ -47,7 +47,7 @@ struct
                                                       name^" is not nullary"))
              | _ -> raise (Underivable ("Bounded cannot be derived for this "
                                         ^"polymorphic variant type"))) in
-      <:module_expr< struct type a = $atype ctxt decl$
+      <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
                      let min_bound = `$List.hd names$ 
                      and max_bound = `$List.last names$ end >>
 

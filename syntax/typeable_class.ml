@@ -26,7 +26,7 @@ struct
              <:expr< $uid:NameMap.find p ctxt.argmap$.type_rep::$cdr$ >>)
         ctxt.params
       <:expr< [] >>
-    in <:module_expr< struct type a = $atype ctxt decl$
+    in <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
           let type_rep = TypeRep.mkFresh $str:mkName tname$ $paramList$ end >>
 
   let tup ctxt ts mexpr expr = 
@@ -34,7 +34,7 @@ struct
         expr_list 
           (List.map (fun t -> <:expr< let module M = $expr ctxt t$ 
                                        in $mexpr$ >>) ts) in
-        <:module_expr< Defaults(struct type a = $atype_expr ctxt (`Tuple ts)$
+        <:module_expr< Defaults(struct type $Ast.TyDcl (loc, "a", [], atype_expr ctxt (`Tuple ts), [])$
                                        let type_rep = Typeable.TypeRep.mkTuple $params$ end) >>
 
   let instance = object(self)
@@ -56,7 +56,7 @@ struct
                <:expr< $mproject (self#expr ctxt t) "type_rep"$::$extends$ >>)
         (<:expr< [] >>, <:expr< [] >>) tags in
       <:module_expr< Defaults(
-        struct type a = $atype ctxt decl$
+        struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
                let type_rep = Typeable.TypeRep.mkPolyv $tags$ $extends$
         end) >>
   end

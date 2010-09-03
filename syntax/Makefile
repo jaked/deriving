@@ -6,7 +6,7 @@ OCAMLDEP   = ocamldep.opt
 ANNOTATE   = yes
 PPFLAGS    = -loc loc
 USE_CAMLP4 = yes
-LIBS       = camlp4lib unix
+LIBS       = dynlink camlp4lib unix
 
 CAMLP4_PRE_NOPRINTER = 
 

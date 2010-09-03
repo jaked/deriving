@@ -16,7 +16,7 @@ struct
   let classname = "Dump"
 
   let wrap ~atype ~dumpers ~undump =
-    <:module_expr< struct type a = $atype$
+    <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype, [])$
                           let to_buffer buffer = function $list:dumpers$
                           let from_stream stream = $undump$ end >>
 

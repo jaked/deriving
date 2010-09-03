@@ -15,7 +15,7 @@ struct
   let classname = "Show"
     
   let wrap (ctxt:Base.context) (decl : Type.decl) matches = <:module_expr< 
-  struct type a = $atype ctxt decl$
+  struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
          let format formatter = function $list:matches$ end >>
     
   let in_a_box box e =
@@ -61,7 +61,7 @@ struct
     method tuple ctxt args = 
       let n = List.length args in
       let tpatt, _ = tuple n in
-      <:module_expr< Defaults (struct type a = $atype_expr ctxt (`Tuple args)$
+      <:module_expr< Defaults (struct type $Ast.TyDcl (loc, "a", [], atype_expr ctxt (`Tuple args), [])$
                             let format formatter $tpatt$ = 
                               $self#nargs ctxt 
                                 (List.mapn (fun t n -> Printf.sprintf "v%d" n, t) args)$ end) >>
