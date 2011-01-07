@@ -25,6 +25,9 @@ module InContext (L : Loc) : Class = struct
   module Helpers = Base.InContext(L)(Description)
   open Helpers
 
+  let wrap min max =
+    [ <:str_item< let min_bound = $min$ >>; <:str_item< let max_bound = $max$ >> ]
+
   let instance = object (self)
     inherit make_module_expr
 
@@ -34,9 +37,7 @@ module InContext (L : Loc) : Class = struct
                     (fun t -> let e = self#expr ctxt t in 
                        <:expr< let module M = $e$ in M.min_bound >>,
                        <:expr< let module M = $e$ in M.max_bound >>) ts) in
-    <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype_expr ctxt (`Tuple ts), [])$
-                          let min_bound = $tuple_expr minBounds$ 
-                          let max_bound = $tuple_expr maxBounds$ end >>
+    wrap (tuple_expr minBounds) (tuple_expr maxBounds)
 
     method sum ?eq ctxt ((tname,_,_,_,_) as decl) summands = 
     let names = ListLabels.map summands
@@ -45,9 +46,7 @@ module InContext (L : Loc) : Class = struct
               | (name,_) -> raise (Underivable ("Bounded cannot be derived for the type "^
                                                   tname ^" because the constructor "^
                                                   name^" is not nullary"))) in
-        <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
-                       let min_bound = $uid:List.hd names$ 
-                       and max_bound = $uid:List.last names$ end >>
+        wrap <:expr< $uid:List.hd names$ >> <:expr< $uid:List.last names$ >>
 
     method variant ctxt decl (_, tags) = 
     let names = ListLabels.map tags
@@ -57,9 +56,7 @@ module InContext (L : Loc) : Class = struct
                                                       name^" is not nullary"))
              | _ -> raise (Underivable ("Bounded cannot be derived for this "
                                         ^"polymorphic variant type"))) in
-      <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
-                     let min_bound = `$List.hd names$ 
-                     and max_bound = `$List.last names$ end >>
+      wrap <:expr< `$List.hd names$ >> <:expr< `$List.last names$ >>
 
   (* should perhaps implement this one *)
   method record ?eq _ (tname,_,_,_,_) = raise (Underivable ("Bounded cannot be derived for record types (i.e. "^

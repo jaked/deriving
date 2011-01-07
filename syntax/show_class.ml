@@ -24,10 +24,9 @@ module InContext (L : Loc) : Class = struct
   module Helpers = Base.InContext(L)(Description)
   open Helpers
 
-  let wrap (ctxt:context) (decl : Type.decl) matches = <:module_expr< 
-  struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
-         let format formatter = function $list:matches$ end >>
-    
+  let wrap formatter =
+    [ <:str_item< let format formatter = function $list:formatter$ >> ]
+
   let in_a_box box e =
     <:expr< 
       Format.$lid:box$ formatter 0;
@@ -71,10 +70,8 @@ module InContext (L : Loc) : Class = struct
     method tuple ctxt args = 
       let n = List.length args in
       let tpatt, _ = tuple n in
-      <:module_expr< Defaults (struct type $Ast.TyDcl (loc, "a", [], atype_expr ctxt (`Tuple args), [])$
-                            let format formatter $tpatt$ = 
-                              $self#nargs ctxt 
-                                (List.mapn (fun t n -> Printf.sprintf "v%d" n, t) args)$ end) >>
+      let names = List.mapn (fun t n -> Printf.sprintf "v%d" n, t) args in
+      wrap [ <:match_case< $tpatt$ -> $self#nargs ctxt names$ >> ]
 
     method case ctxt : Type.summand -> Ast.match_case = 
       fun (name, args) ->
@@ -94,9 +91,9 @@ module InContext (L : Loc) : Class = struct
                                       $self#call_expr ctxt t "format"$ formatter $lid:name$ >>
       | f -> raise (Underivable ("Show cannot be derived for record types with polymorphic fields")) 
 
-    method sum ?eq ctxt decl summands = wrap ctxt decl (List.map (self#case ctxt) summands)
+    method sum ?eq ctxt decl summands = wrap (List.map (self#case ctxt) summands)
 
-    method record ?eq ctxt decl fields = wrap ctxt decl [ <:match_case<
+    method record ?eq ctxt decl fields = wrap [ <:match_case<
       $record_pattern fields$ -> $in_hovbox
        <:expr<
           Format.pp_print_char formatter '{';
@@ -105,7 +102,7 @@ module InContext (L : Loc) : Class = struct
             (List.map (self#field ctxt) fields)$;
           Format.pp_print_char formatter '}'; >>$ >>]
 
-    method variant ctxt decl (_,tags) = wrap ctxt decl (List.map (self#polycase ctxt) tags
+    method variant ctxt decl (_,tags) = wrap  (List.map (self#polycase ctxt) tags
                                                         @ [ <:match_case< _ -> assert false >> ])
   end
 

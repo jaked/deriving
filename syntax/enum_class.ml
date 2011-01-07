@@ -10,7 +10,7 @@ open Defs
 module Description : ClassDescription = struct
   type t
   let classname = "Enum"
-  let default_module = None (* Hand made defaults... FIXME.*)
+  let default_module = Some "Defaults"
   let allow_private = false
 end
 
@@ -25,10 +25,12 @@ module InContext (L : Loc) : Class = struct
   module Helpers = Base.InContext(L)(Description)
   open Helpers
 
+  let wrap numbering = [ <:str_item< let numbering = $numbering$ >> ]
+
   let instance = object(self)
     inherit make_module_expr
 
-    method sum ?eq ctxt ((tname,_,_,_,_) as decl) summands =
+    method sum ?eq ctxt (tname,_,_,_,_) summands =
     let numbering = 
       List.fold_right2
         (fun n ctor rest -> 
@@ -40,8 +42,7 @@ module InContext (L : Loc) : Class = struct
         (List.range 0 (List.length summands))
         summands
         <:expr< [] >> in
-      <:module_expr< Enum.Defaults(struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
-                                          let numbering = $numbering$ end) >>
+    wrap numbering
 
     method variant ctxt decl (_, tags) = 
     let numbering = 
@@ -56,7 +57,7 @@ module InContext (L : Loc) : Class = struct
         (List.range 0 (List.length tags))
         tags
         <:expr< [] >> in
-      <:module_expr< Enum.Defaults(struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$ let numbering = $numbering$ end) >>
+    wrap numbering
 
     method tuple context _ = raise (Underivable "Enum cannot be derived for tuple types")
     method record ?eq _ (tname,_,_,_,_) = raise (Underivable

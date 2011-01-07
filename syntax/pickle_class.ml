@@ -96,16 +96,17 @@ module InContext (L : Loc) : Class = struct
       ctxt.argmap
       <:str_item< >>
 
-  let wrap ~ctxt ~atype ~tymod ~eqmod ~picklers ~unpickler =
-    <:module_expr< struct open Eq open Typeable
-                          module T = $tymod$
-                          module E = $eqmod$
-                          type $Ast.TyDcl (loc, "a", [], atype, [])$
-                          open Write
-                          let pickle = let module W = Utils(T)(E) in function $list:picklers$
-                          open Read
-                          let unpickle = let module W = Utils(T) in $unpickler$
-    end >>
+  let wrap ctxt ~tymod ~eqmod ~picklers ~unpickler =
+    let unpickler = <:expr< let module W = Utils(T) in $unpickler$ >> in
+    let pickle = <:expr<
+      let module W = Utils(T)(E) in
+      let rec pickle = function $list:picklers$ in pickle >> in
+    [ <:str_item< module T = $tymod$ >>;
+      <:str_item< module E = $eqmod$ >>;
+      <:str_item< open $uid:classname$.Write >>;
+      <:str_item< let pickle = $pickle$ >>;
+      <:str_item< open $uid:classname$.Read >>;
+      <:str_item< let unpickle = $unpickler$ >> ]
 
     let instance = object (self)
     inherit make_module_expr
@@ -116,8 +117,16 @@ module InContext (L : Loc) : Class = struct
       let eidlist = expr_list (List.map (fun (id,_) -> <:expr< $lid:id$ >>) ids) in
       let pidlist = patt_list (List.map (fun (id,_) -> <:patt< $lid:id$ >>) ids) in
       let tpatt,texpr = tuple ~param:"id" nts in
-      let tymod = Typeable.tup ctxt ts <:expr< M.T.type_rep >> (self#expr)
-      and eqmod = Eq.tup ctxt ts <:expr< M.E.eq >> (self#expr)
+      let tymod =
+	<:module_expr< Typeable.Defaults(struct
+	  type a = ($atype_expr ctxt (`Tuple ts)$)
+	  $list:(Typeable.tup ctxt ts <:expr< M.T.type_rep >> self#expr)$
+	end) >>
+      and eqmod =
+	<:module_expr< struct
+	  type a = ($atype_expr ctxt (`Tuple ts)$)
+	  $list:(Eq.tup ctxt ts <:expr< M.E.eq >> self#expr)$
+	end >>
       and picklers =
         let inner = 
           List.fold_right
@@ -140,9 +149,8 @@ module InContext (L : Loc) : Class = struct
           <:expr< W.tuple
             (function
                | $pidlist$ -> $inner$
-               | _ -> raise (UnpicklingError $str:msg$)) >>
-      and atype = atype_expr ctxt (`Tuple ts) in
-        <:module_expr< Pickle.Defaults($wrap ~ctxt ~atype ~tymod ~eqmod ~picklers ~unpickler$) >>
+               | _ -> raise (UnpicklingError $str:msg$)) >> in
+        wrap ctxt ~tymod ~eqmod ~picklers ~unpickler
 
     method polycase ctxt tagspec : Ast.match_case = match tagspec with
     | Tag (name, None) -> <:match_case<
@@ -197,7 +205,7 @@ module InContext (L : Loc) : Class = struct
         let extension_case = self#extension ctxt tname extensions in
           <:expr< fun id -> W.sum (function $list:tag_cases @ [extension_case]$) id >>
       in
-        wrap ~ctxt ~atype:(atype ctxt decl) ~tymod:(typeable_instance ctxt tname)
+        wrap ctxt ~tymod:(typeable_instance ctxt tname)
           ~eqmod:(eq_instance ctxt tname)
           ~picklers:(List.map (self#polycase ctxt) tags) ~unpickler
 
@@ -234,7 +242,7 @@ module InContext (L : Loc) : Class = struct
   method sum ?eq ctxt (tname,_,_,_,_ as decl) summands =
     let nctors = List.length summands in
     let picklers, unpicklers = List.split (List.mapn (self#case nctors ctxt) summands) in
-    wrap ~ctxt ~atype:(atype ctxt decl)
+    wrap ctxt
       ~tymod:(typeable_instance ctxt tname)
       ~eqmod:(eq_instance ctxt tname)
       ~picklers
@@ -245,7 +253,7 @@ module InContext (L : Loc) : Class = struct
         in W.sum f id >>
 
   method record ?eq ctxt (tname,_,_,_,_ as decl) (fields : Type.field list) = 
-      wrap ~ctxt ~atype:(atype ctxt decl) 
+      wrap ctxt
         ~picklers:(pickle_record ctxt decl fields self#call_expr)
         ~unpickler:(unpickle_record ctxt decl fields self#call_expr)
         ~tymod:(typeable_instance ctxt tname)

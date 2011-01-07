@@ -25,10 +25,9 @@ module InContext (L : Loc) : Class = struct
   module Helpers = Base.InContext(L)(Description)
   open Helpers
 
-  let wrap ~atype ~dumpers ~undump =
-    <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype, [])$
-                          let to_buffer buffer = function $list:dumpers$
-                          let from_stream stream = $undump$ end >>
+  let wrap ?(buffer="buffer") ?(stream="stream") to_buffer from_stream =
+    [ <:str_item< let to_buffer $lid:buffer$ = function $list:to_buffer$ >> ;
+      <:str_item< let from_stream $lid:stream$ = $from_stream$ >> ]
 
   let instance = object (self)
     inherit make_module_expr
@@ -41,13 +40,12 @@ module InContext (L : Loc) : Class = struct
         exprs (<:expr<>>, <:expr< $tuple_expr (List.map (fun (id,_) -> <:expr< $lid:id$ >>) exprs)$>>)
 
     method tuple ctxt ts = 
-      let atype = atype_expr ctxt (`Tuple ts)
-      and dumpers, undump = 
+      let dumpers, undump = 
         let n = List.length ts in 
         let pinner, undump = self#nargs ctxt (List.mapn (fun t n -> (Printf.sprintf "v%d" n, t)) ts) in
         let patt, expr = tuple n in
           [ <:match_case< $patt$ -> $pinner$ >> ], undump in
-        <:module_expr< Defaults( $wrap ~atype ~dumpers ~undump$) >>
+        <:module_expr< $wrap dumpers undump$ >>
 
     method polycase ctxt tagspec n : Ast.match_case * Ast.match_case = 
       let dumpn = <:expr< Dump_int.to_buffer buffer $`int:n$ >> in
@@ -86,15 +84,16 @@ module InContext (L : Loc) : Class = struct
           <:expr< $self#call_expr ctxt t "from_stream"$ stream >>
       | f -> raise (Underivable ("Dump cannot be derived for record types with polymorphic fields")) 
 
-    method sum ?eq ctxt ((tname,_,_,_,_) as decl) summands = 
+    method sum ?eq ctxt (tname,_,_,_,_) summands = 
       let msg = "Dump: unexpected tag %d at character %d when deserialising " ^ tname in
       let dumpers, undumpers = 
         List.split (List.mapn (self#case ctxt) summands) in
-        wrap ~atype:(atype ctxt decl) ~dumpers
-          ~undump:<:expr< match Dump_int.from_stream stream with $list:undumpers$ 
-                                | n -> raise (Dump_error
-                                                (Printf.sprintf $str:msg$ n
-                                                   (Stream.count stream))) >>
+      let undumpers =
+        <:expr< match Dump_int.from_stream stream with $list:undumpers$ 
+                | n -> raise (Dump_error
+				(Printf.sprintf $str:msg$ n (Stream.count stream))) >>
+      in
+      wrap dumpers undumpers
 
     method record ?eq ctxt decl fields = 
        let dumpers, undumpers = 
@@ -106,18 +105,20 @@ module InContext (L : Loc) : Class = struct
            fields
            undumpers
            (record_expression fields) in
-         wrap ~atype:(atype ctxt decl) ~undump
-               ~dumpers:[ <:match_case< $record_pattern fields$ -> $List.fold_left1 seq dumpers$ >>]
+       let dumpers =
+	 [ <:match_case< $record_pattern fields$ -> $List.fold_left1 seq dumpers$ >>] in
+       wrap dumpers undump
    
     method variant ctxt decl (_, tags) = 
       let msg = "Dump: unexpected tag %d at character %d when deserialising polymorphic variant" in
       let dumpers, undumpers = 
         List.split (List.mapn (self#polycase ctxt) tags) in
-        wrap ~atype:(atype ctxt decl) ~dumpers:(dumpers @ [ <:match_case< _ -> assert false >>])
-          ~undump:<:expr< match Dump_int.from_stream stream with $list:undumpers$ 
-                                | n -> raise (Dump_error
-                                                (Printf.sprintf $str:msg$ n
-                                                   (Stream.count stream))) >>
+      let undumpers =
+          <:expr< match Dump_int.from_stream stream with $list:undumpers$ 
+                  | n -> raise (Dump_error
+                                  (Printf.sprintf $str:msg$ n (Stream.count stream))) >>
+      in
+      wrap (dumpers @ [ <:match_case< _ -> assert false >>]) undumpers
   end
 
   let make_module_expr = instance#rhs

@@ -155,17 +155,43 @@ struct
 
   let apply_functor (f : Ast.module_expr) (args : Ast.module_expr list) : Ast.module_expr =
       List.fold_left (fun f p -> <:module_expr< $f$ ($p$) >>) f args
-          
+
+  let atype_expr ctxt expr =
+    Untranslate.expr (instantiate_modargs ctxt expr)
+
+  let atype ctxt (name, params, rhs, _, _) =
+    match rhs with
+    | `Fresh _ | `Variant _ | `Nothing ->
+	let params =
+	  List.map
+	    (fun (p, _) -> `Constr ([NameMap.find p ctxt.argmap; "a"],[]))
+	    params in
+	Untranslate.expr (`Constr ([name], params))
+    | `Expr e -> atype_expr ctxt e
+
+  let wrap_default m = match default_module with
+  | None -> m
+  | Some name ->
+      <:module_expr< $uid:classname$.$uid:name$($m$) >>
+
   class virtual make_module_expr : generator =
   object (self)
+
+    method wrap ctxt ty items =
+      let mexpr =
+	<:module_expr< struct
+	  type a = ($atype_expr ctxt ty$)
+	  $list:items$
+	end >> in
+      wrap_default mexpr
 
     method mapply ctxt (funct : Ast.module_expr) args =
       apply_functor funct (List.map (self#expr ctxt) args)
 
-    method virtual variant : context -> decl -> variant -> Ast.module_expr
-    method virtual sum     : ?eq:expr -> context -> decl -> summand list -> Ast.module_expr
-    method virtual record  : ?eq:expr -> context -> decl -> field list -> Ast.module_expr
-    method virtual tuple   : context -> expr list -> Ast.module_expr
+    method virtual variant : context -> decl -> variant -> Ast.str_item list
+    method virtual sum     : ?eq:expr -> context -> decl -> summand list -> Ast.str_item list
+    method virtual record  : ?eq:expr -> context -> decl -> field list -> Ast.str_item list
+    method virtual tuple   : context -> expr list -> Ast.str_item list
 
     method param ctxt (name, variance) =
       <:module_expr< $uid:NameMap.find name ctxt.argmap$ >>
@@ -183,38 +209,31 @@ struct
             let f = (modname_from_qname ~qname ~classname) in
               self#mapply ctxt (Ast.MeId (loc, f)) args
 
-    method expr (ctxt : context) : expr -> Ast.module_expr = function
-      | `Param p    -> self#param      ctxt p
-      | `Object o   -> self#object_    ctxt o
-      | `Class c    -> self#class_     ctxt c
-      | `Label l    -> self#label      ctxt l 
-      | `Function f -> self#function_  ctxt f
-      | `Constr c   -> self#constr     ctxt c
-      | `Tuple t    -> self#tuple      ctxt t
+    method expr ctxt ty = match ty with
+      | `Param p    ->                   (self#param      ctxt p)
+      | `Object o   -> self#wrap ctxt ty (self#object_    ctxt o)
+      | `Class c    -> self#wrap ctxt ty (self#class_     ctxt c)
+      | `Label l    -> self#wrap ctxt ty (self#label      ctxt l)
+      | `Function f -> self#wrap ctxt ty (self#function_  ctxt f)
+      | `Constr c   ->                   (self#constr     ctxt c)
+      | `Tuple t    -> self#wrap ctxt ty (self#tuple      ctxt t)
 
     method rhs ctxt (tname, params, rhs, constraints, _ as decl : Type.decl) : Ast.module_expr = 
+      let ty = `Constr([tname], List.map (fun p -> `Param p) params) in
       match rhs with
         | `Fresh (_, _, (`Private : [`Private|`Public])) when not allow_private ->
             raise (Underivable ("The class "^ classname ^" cannot be derived for private types"))
-        | `Fresh (eq, Sum summands, _) -> self#sum ?eq ctxt decl summands
-        | `Fresh (eq, Record fields, _) -> self#record ?eq ctxt decl fields
+        | `Fresh (eq, Sum summands, _) ->
+	    self#wrap ctxt ty (self#sum ?eq ctxt decl summands)
+        | `Fresh (eq, Record fields, _) ->
+	    self#wrap ctxt ty (self#record ?eq ctxt decl fields)
         | `Expr e -> self#expr ctxt e
-        | `Variant v -> self# variant ctxt decl v
+        | `Variant v -> self#wrap ctxt ty (self#variant ctxt decl v)
         | `Nothing -> <:module_expr< >>
 
     method call_expr ctxt ty name = mproject (self#expr ctxt ty) name
 
   end
-
-  let atype_expr ctxt expr = 
-    Untranslate.expr (instantiate_modargs ctxt expr)
-
-  let atype ctxt (name, params, rhs, _, _) = 
-    match rhs with 
-      | `Fresh _ | `Variant _ | `Nothing ->
-          Untranslate.expr (`Constr ([name],
-                                     List.map (fun (p,_) -> `Constr ([NameMap.find p ctxt.argmap; "a"],[])) params))
-      | `Expr e -> atype_expr ctxt e
 
   let make_safe (decls : (decl * Ast.module_binding) list) : Ast.module_binding list =
     (* re-order a set of mutually recursive modules in an attempt to
@@ -267,9 +286,6 @@ struct
            let arg = NameMap.find p context.argmap in
              <:module_expr< functor ($arg$ : $uid:classname$.$uid:classname$) -> $rhs$ >>)
         context.params in
-    let apply_defaults mexpr = match default_module with
-      | None -> mexpr
-      | Some default -> <:module_expr< $uid:classname$.$uid:default$ ($mexpr$) >> in
     let mbinds =
       List.map 
         (fun (name,_,_,_,_ as decl) -> 
@@ -277,7 +293,7 @@ struct
               <:module_binding< 
                 $uid:classname ^ "_"^ name$
                 : $make_module_type context decl$
-               = $apply_defaults (make_module_expr context decl)$ >>))
+               = $make_module_expr context decl$ >>))
         decls in
     let sorted_mbinds = make_safe mbinds in
     let mrec =

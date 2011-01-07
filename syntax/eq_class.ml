@@ -19,7 +19,7 @@ module type EqClass = sig
   val tup:
       context -> Type.expr list -> Camlp4.PreCast.Ast.expr ->
 	(context -> Type.expr -> Camlp4.PreCast.Ast.module_expr) ->
-	  Camlp4.PreCast.Ast.module_expr
+	  Camlp4.PreCast.Ast.str_item list
 end
 
 module InContext (L : Loc) : EqClass = struct
@@ -37,12 +37,13 @@ module InContext (L : Loc) : EqClass = struct
 
   let wildcard_failure = <:match_case< _ -> false >>
 
+  let wrap eq =
+    [ <:str_item< let eq l r = match l, r with $list:eq$ >>]
+
   let tup ctxt ts mexpr exp = 
       match ts with
-        | [t] -> 
-            <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype_expr ctxt (`Tuple ts), [])$
-                                  let eq l r = let module M = $exp ctxt t$ 
-                                   in $mexpr$ l r end >>
+        | [t] ->
+	    wrap [ <:match_case< (l,r) -> let module M = $exp ctxt t$ in $mexpr$ l r >> ]
         | ts ->
             let _, (lpatt, rpatt), expr = 
               List.fold_right
@@ -56,9 +57,7 @@ module InContext (L : Loc) : EqClass = struct
                 ts
                 (0, (<:patt< >>, <:patt< >>), <:expr< true >>)
             in 
-              <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype_expr ctxt (`Tuple ts), [])$
-                                    let eq $Ast.PaTup (loc, lpatt)$ $Ast.PaTup (loc, rpatt)$ = $expr$ end >>
-
+            wrap [ <:match_case< $Ast.PaTup(loc, Ast.PaCom(loc, Ast.PaTup(loc, lpatt),Ast.PaTup(loc, rpatt)))$ -> $expr$ >> ]
 
   let instance = object (self)
     inherit make_module_expr
@@ -97,15 +96,11 @@ module InContext (L : Loc) : EqClass = struct
 
   method sum ?eq ctxt decl summands =
     let wildcard = match summands with [_] -> [] | _ -> [ <:match_case< _ -> false >>] in
-  <:module_expr< 
-      struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
-             let eq l r = match l, r with 
-                          $list:List.map (self#case ctxt) summands @ wildcard$
-  end >>
+    wrap (List.map (self#case ctxt) summands @ wildcard)
 
   method record ?eq ctxt decl fields = 
     if List.exists (function (_,_,`Mutable) -> true | _ -> false) fields then
-       <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$ let eq = (==) end >>
+       wrap [ <:match_case< (l,r) -> l==r >> ]
     else
     let lpatt = record_pattern ~prefix:"l" fields
     and rpatt = record_pattern ~prefix:"r" fields 
@@ -114,14 +109,10 @@ module InContext (L : Loc) : EqClass = struct
         (fun f e -> <:expr< $self#field ctxt f$ && $e$ >>)
         fields
         <:expr< true >>
-    in <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
-                             let eq $lpatt$ $rpatt$ = $expr$ end >>
+    in wrap [ <:match_case< (($lpatt$), ($rpatt$)) -> $expr$ >> ]
 
   method variant ctxt decl (spec, tags) = 
-    <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
-                          let eq l r = match l, r with
-                                       $list:List.map (self#polycase ctxt) tags$
-                                       | _ -> false end >>
+    wrap (List.map (self#polycase ctxt) tags @ [wildcard_failure])
   end
 
   let make_module_expr = instance#rhs

@@ -19,7 +19,7 @@ module type TypeableClass = sig
   val tup:
       context -> Type.expr list -> Camlp4.PreCast.Ast.expr ->
 	(context -> Type.expr -> Camlp4.PreCast.Ast.module_expr) ->
-	  Camlp4.PreCast.Ast.module_expr
+	  Camlp4.PreCast.Ast.str_item list
 end
 
 module InContext (L : Loc) : TypeableClass = struct
@@ -38,6 +38,8 @@ module InContext (L : Loc) : TypeableClass = struct
       Printf.sprintf "%s_%d_%f_%s" 
         file_name sl (Unix.gettimeofday ())
 
+  let wrap type_rep = [ <:str_item< let type_rep = $type_rep$ >> ]
+
   let gen ?eq ctxt ((tname,_,_,_,_) as decl : Type.decl) _ = 
     let paramList = 
       List.fold_right 
@@ -45,16 +47,14 @@ module InContext (L : Loc) : TypeableClass = struct
              <:expr< $uid:NameMap.find p ctxt.argmap$.type_rep::$cdr$ >>)
         ctxt.params
       <:expr< [] >>
-    in <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
-          let type_rep = TypeRep.mkFresh $str:mkName tname$ $paramList$ end >>
+    in wrap <:expr< TypeRep.mkFresh $str:mkName tname$ $paramList$ >>
 
   let tup ctxt ts mexpr expr = 
       let params = 
         expr_list 
           (List.map (fun t -> <:expr< let module M = $expr ctxt t$ 
                                        in $mexpr$ >>) ts) in
-        <:module_expr< Defaults(struct type $Ast.TyDcl (loc, "a", [], atype_expr ctxt (`Tuple ts), [])$
-                                       let type_rep = Typeable.TypeRep.mkTuple $params$ end) >>
+        wrap <:expr< Typeable.TypeRep.mkTuple $params$ >>
 
   let instance = object(self)
     inherit make_module_expr
@@ -74,10 +74,7 @@ module InContext (L : Loc) : TypeableClass = struct
                tags,
                <:expr< $self#call_expr ctxt t "type_rep"$::$extends$ >>)
         (<:expr< [] >>, <:expr< [] >>) tags in
-      <:module_expr< Defaults(
-        struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
-               let type_rep = Typeable.TypeRep.mkPolyv $tags$ $extends$
-        end) >>
+      wrap <:expr<  Typeable.TypeRep.mkPolyv $tags$ $extends$ >>
   end
 
   let make_module_expr = instance#rhs

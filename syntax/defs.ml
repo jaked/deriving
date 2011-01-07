@@ -35,26 +35,25 @@ class type virtual generator = object
       method constr: context -> Type.qname * Type.expr list -> Ast.module_expr
       method param: context -> Type.param -> Ast.module_expr
 
+      method wrap: context -> Type.expr -> Ast.str_item list -> Ast.module_expr
+
       method call_expr: context -> Type.expr -> string -> Ast.expr
 
       method virtual sum:
 	  ?eq:Type.expr -> context ->
-	    Type.decl -> Type.summand list -> Ast.module_expr
-      method virtual tuple: context -> Type.expr list -> Ast.module_expr
-      method virtual variant:
-          context ->
-	    Type.decl -> Type.variant -> Ast.module_expr
+	    Type.decl -> Type.summand list -> Ast.str_item list
+      method virtual tuple: context -> Type.expr list -> Ast.str_item list
+      method virtual variant: context -> Type.decl -> Type.variant -> Ast.str_item list
       method virtual record:
-	  ?eq:Type.expr -> context ->
-	    Type.decl -> Type.field list -> Ast.module_expr
+	  ?eq:Type.expr -> context -> Type.decl -> Type.field list -> Ast.str_item list
 
-      method class_: context -> [ `NYI ] -> Ast.module_expr
-      method function_: context -> Type.expr * Type.expr -> Ast.module_expr
+      method class_: context -> [ `NYI ] -> Ast.str_item list
+      method function_: context -> Type.expr * Type.expr -> Ast.str_item list
       method label:
           context ->
 	    [ `NonOptional | `Optional ] * Type.name * Type.expr * Type.expr ->
-	      Ast.module_expr
-      method object_: context -> [ `NYI ] -> Ast.module_expr
+	      Ast.str_item list
+      method object_: context -> [ `NYI ] -> Ast.str_item list
 
     end
 
