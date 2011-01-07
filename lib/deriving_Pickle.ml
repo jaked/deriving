@@ -10,7 +10,12 @@
   1. every object receives a serializable id.
   2. an object is serialized using the ids of its subobjects
 *)
-module Pickle =
+
+open Deriving_Typeable
+open Deriving_Eq
+open Deriving_Dump
+
+module Deriving_Pickle =
 struct
 exception UnknownTag of int * string
 exception UnpicklingError of string
@@ -58,13 +63,13 @@ type repr = Repr.t
 module Write : sig
   type s = {
     nextid : Id.t;
-    obj2id : Id.t Dynmap.DynMap.t;
+    obj2id : Id.t Deriving_dynmap.DynMap.t;
     id2rep : repr IdMap.t;
   }
   val initial_output_state : s
-  include Monad.Monad_state_type with type state = s
+  include Deriving_monad.Monad_state_type with type state = s
 
-  module Utils (T : Typeable.Typeable) (E : Eq.Eq with type a = T.a) : sig
+  module Utils (T : Typeable) (E : Eq with type a = T.a) : sig
     val allocate : T.a -> (id -> unit m) -> id m
     val store_repr : id -> Repr.t -> unit m
   end
@@ -72,29 +77,29 @@ end =
 struct
   type s = {
     nextid : Id.t; (* the next id to be allocated *)
-    obj2id : Id.t Dynmap.DynMap.t; (* map from typerep to id cache for the corresponding type *)
+    obj2id : Id.t Deriving_dynmap.DynMap.t; (* map from typerep to id cache for the corresponding type *)
     id2rep : repr IdMap.t;
   }
   let initial_output_state = {
     nextid = Id.initial;
-    obj2id = Dynmap.DynMap.empty;
+    obj2id = Deriving_dynmap.DynMap.empty;
     id2rep = IdMap.empty;
   }
-  include Monad.Monad_state (struct type state = s end)
-  module Utils (T : Typeable.Typeable) (E : Eq.Eq with type a = T.a) =
+  include Deriving_monad.Monad_state (struct type state = s end)
+  module Utils (T : Typeable) (E : Eq with type a = T.a) =
   struct
-    module C = Dynmap.Comp(T)(E)
+    module C = Deriving_dynmap.Comp(T)(E)
     let comparator = C.eq
 
     let allocate o f =
       let obj = T.make_dynamic o in
       get >>= fun ({nextid=nextid;obj2id=obj2id} as t) ->
-        match Dynmap.DynMap.find obj obj2id with
+        match Deriving_dynmap.DynMap.find obj obj2id with
           | Some id -> return id
           | None -> 
               let id, nextid = nextid, Id.next nextid in
                 put {t with
-                       obj2id=Dynmap.DynMap.add obj id comparator obj2id;
+                       obj2id=Deriving_dynmap.DynMap.add obj id comparator obj2id;
                        nextid=nextid} >>
                   f id >> return id
                   
@@ -105,10 +110,10 @@ struct
 end
 
 module Read : sig
-  type s = (repr * (Typeable.dynamic option)) IdMap.t
-  include Monad.Monad_state_type with type state = s
-  val find_by_id : id -> (Repr.t * Typeable.dynamic option) m
-  module Utils (T : Typeable.Typeable) : sig
+  type s = (repr * (dynamic option)) IdMap.t
+  include Deriving_monad.Monad_state_type with type state = s
+  val find_by_id : id -> (Repr.t * dynamic option) m
+  module Utils (T : Typeable) : sig
     val sum    : (int * id list -> T.a m)  -> id -> T.a m
     val tuple  : (id list -> T.a m)        -> id -> T.a m
     val record : (T.a -> id list -> T.a m) -> int -> id -> T.a m
@@ -116,14 +121,14 @@ module Read : sig
   end
 end =
 struct
-  type s = (repr * (Typeable.dynamic option)) IdMap.t
-  include Monad.Monad_state (struct type state = s end)
+  type s = (repr * (dynamic option)) IdMap.t
+  include Deriving_monad.Monad_state (struct type state = s end)
 
   let find_by_id id =
     get >>= fun state ->
     return (IdMap.find id state)
 
-  module Utils (T : Typeable.Typeable) = struct
+  module Utils (T : Typeable) = struct
     let decode_repr_ctor c = match Repr.unpack_ctor c with
       | (Some c, ids) -> (c, ids)
       | _ -> invalid_arg "decode_repr_ctor"
@@ -200,8 +205,8 @@ end
 module type Pickle =
 sig
   type a
-  module T : Typeable.Typeable with type a = a
-  module E : Eq.Eq with type a = a
+  module T : Typeable with type a = a
+  module E : Eq with type a = a
   val pickle : a -> id Write.m
   val unpickle : id -> a Read.m
   val to_buffer : Buffer.t -> a -> unit
@@ -215,8 +220,8 @@ end
 module Defaults
   (S : sig
      type a
-     module T : Typeable.Typeable with type a = a
-     module E : Eq.Eq with type a = a
+     module T : Typeable with type a = a
+     module E : Eq with type a = a
      val pickle : a -> id Write.m
      val unpickle : id -> a Read.m
    end) : Pickle with type a = S.a =
@@ -372,16 +377,16 @@ struct
 end
 
 module Pickle_from_dump
-  (P : Dump.Dump)
-  (E : Eq.Eq with type a = P.a)
-  (T : Typeable.Typeable with type a = P.a)
+  (P : Dump)
+  (E : Eq with type a = P.a)
+  (T : Typeable with type a = P.a)
   : Pickle with type a = P.a
            and type a = T.a = Defaults
   (struct
      type a = T.a
      module T = T
      module E = E
-     module Comp = Dynmap.Comp(T)(E)
+     module Comp = Deriving_dynmap.Comp(T)(E)
      open Write
      module W = Utils(T)(E)
      let pickle obj = 
@@ -399,19 +404,19 @@ module Pickle_from_dump
            | Some obj -> return (T.throwing_cast obj)
    end)
 
-module Pickle_unit : Pickle with type a = unit = Pickle_from_dump(Dump.Dump_unit)(Eq.Eq_unit)(Typeable.Typeable_unit)
-module Pickle_bool = Pickle_from_dump(Dump.Dump_bool)(Eq.Eq_bool)(Typeable.Typeable_bool)
-module Pickle_int = Pickle_from_dump(Dump.Dump_int)(Eq.Eq_int)(Typeable.Typeable_int)
-module Pickle_char = Pickle_from_dump(Dump.Dump_char)(Eq.Eq_char)(Typeable.Typeable_char)
-module Pickle_float = Pickle_from_dump(Dump.Dump_float)(Eq.Eq_float)(Typeable.Typeable_float)
-module Pickle_num = Pickle_from_dump(Dump.Dump_num)(Eq.Eq_num)(Typeable.Typeable_num)
-module Pickle_string = Pickle_from_dump(Dump.Dump_string)(Eq.Eq_string)(Typeable.Typeable_string) 
+module Pickle_unit : Pickle with type a = unit = Pickle_from_dump(Dump_unit)(Eq_unit)(Typeable_unit)
+module Pickle_bool = Pickle_from_dump(Dump_bool)(Eq_bool)(Typeable_bool)
+module Pickle_int = Pickle_from_dump(Dump_int)(Eq_int)(Typeable_int)
+module Pickle_char = Pickle_from_dump(Dump_char)(Eq_char)(Typeable_char)
+module Pickle_float = Pickle_from_dump(Dump_float)(Eq_float)(Typeable_float)
+module Pickle_num = Pickle_from_dump(Dump_num)(Eq_num)(Typeable_num)
+module Pickle_string = Pickle_from_dump(Dump_string)(Eq_string)(Typeable_string)
 
 module Pickle_option (V0 : Pickle) : Pickle with type a = V0.a option = Defaults(
   struct
-    module T = Typeable.Typeable_option (V0.T)
-    module E = Eq.Eq_option (V0.E)
-    module Comp = Dynmap.Comp (T) (E)
+    module T = Typeable_option (V0.T)
+    module E = Eq_option (V0.E)
+    module Comp = Deriving_dynmap.Comp (T) (E)
     open Write
     type a = V0.a option
     let rec pickle =
@@ -441,9 +446,9 @@ module Pickle_option (V0 : Pickle) : Pickle with type a = V0.a option = Defaults
 module Pickle_list (V0 : Pickle)
   : Pickle with type a = V0.a list = Defaults (
 struct
-  module T = Typeable.Typeable_list (V0.T)
-  module E = Eq.Eq_list (V0.E)
-  module Comp = Dynmap.Comp (T) (E)
+  module T = Typeable_list (V0.T)
+  module E = Eq_list (V0.E)
+  module Comp = Deriving_dynmap.Comp (T) (E)
   type a = V0.a list
   open Write
   module U = Utils(T)(E)
@@ -471,10 +476,10 @@ struct
       W.sum f id
 end)
 end
-include Pickle  
+include Deriving_Pickle  
 
 type 'a ref = 'a Pervasives.ref = { mutable contents : 'a }
-    deriving (Pickle)
+    deriving (Eq,Typeable,Pickle)
 
 (* Idea: keep pointers to values that we've serialized in a global
    weak hash table so that we can share structure with them if we

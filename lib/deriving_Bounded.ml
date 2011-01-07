@@ -5,7 +5,7 @@
 *)
 
 (** Primitive instanecs for bounded **)
-module Bounded = struct 
+module Deriving_Bounded = struct
 module type Bounded = sig
   type a
   val min_bound : a
@@ -45,7 +45,7 @@ module Bounded_unit = struct
   let max_bound = ()
 end 
 end
-include Bounded
+include Deriving_Bounded
 type open_flag = Pervasives.open_flag  =
                  | Open_rdonly
                  | Open_wronly

@@ -8,10 +8,28 @@
 open Defs
 
 module Description : ClassDescription = struct
-  type t
   let classname = "Eq"
+  let runtimename = "Deriving_Eq"
   let default_module = None
   let allow_private = true
+  let predefs = [
+    ["unit"], "unit";
+    ["bool"], "bool";
+    ["char"], "char";
+    ["int"], "int";
+    (* ["int32"], "int32"; *)
+    (* ["Int32";"t"], "int32"; *)
+    (* ["int64"], "int64"; *)
+    (* ["Int64";"t"], "int64"; *)
+    (* ["nativeint"], "nativeint"; *)
+    ["float"], "float";
+    ["num"], "num";
+    ["list"], "list";
+    ["option"], "option";
+    ["string"], "string";
+    ["ref"], "ref";
+    ["array"], "array";
+  ]
 end
 
 module type EqClass = sig

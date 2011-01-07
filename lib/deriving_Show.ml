@@ -5,7 +5,7 @@
    See the file COPYING for details.
 *)
 
-module Show = 
+module Deriving_Show = 
 struct 
 (** Show **)
 module type Show = sig
@@ -189,7 +189,7 @@ module Show_unit = Defaults(struct
 end)
 
 end
-include Show
+include Deriving_Show
 
 type open_flag = Pervasives.open_flag  =
                  | Open_rdonly

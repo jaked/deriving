@@ -8,10 +8,23 @@
 open Defs
 
 module Description : ClassDescription = struct
-  type t
   let classname = "Bounded"
+  let runtimename = "Deriving_Bounded"
   let default_module = None
   let allow_private = false
+  let predefs = [
+    ["unit"], "unit";
+    ["bool"], "bool";
+    ["char"], "char";
+    ["int"], "int";
+    ["int32"], "int32";
+    ["Int32";"t"], "int32";
+    ["int64"], "int64";
+    ["Int64";"t"], "int64";
+    ["nativeint"], "nativeint";
+    ["open_flag"], "open_flag";
+    ["fpclass"], "fpclass";
+  ]
 end
 
 module InContext (L : Loc) : Class = struct

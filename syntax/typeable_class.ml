@@ -8,10 +8,27 @@
 open Defs
 
 module Description : ClassDescription = struct
-  type t
   let classname = "Typeable"
+  let runtimename = "Deriving_Typeable"
   let default_module = Some "Defaults"
   let allow_private = true
+  let predefs = [
+    ["int"], "int";
+    ["bool"], "bool";
+    ["unit"], "unit";
+    ["char"], "char";
+    (* ["int32"], "int32"; *)
+    (* ["Int32";"t"], "int32"; *)
+    (* ["int64"], "int64"; *)
+    (* ["Int64";"t"], "int64"; *)
+    (* ["nativeint"], "nativeint"; *)
+    ["float"], "float";
+    ["num"], "num";
+    ["string"], "string";
+    ["list"], "list";
+    ["ref"], "ref";
+    ["option"], "option";
+  ]
 end
 
 module type TypeableClass = sig
@@ -32,6 +49,7 @@ module InContext (L : Loc) : TypeableClass = struct
   open L
   module Helpers = Base.InContext(L)(Description)
   open Helpers
+  open Description
 
   let mkName : name -> string = 
     let file_name, sl, _, _, _, _, _, _ = Loc.to_tuple loc in
@@ -47,14 +65,14 @@ module InContext (L : Loc) : TypeableClass = struct
              <:expr< $uid:NameMap.find p ctxt.argmap$.type_rep::$cdr$ >>)
         ctxt.params
       <:expr< [] >>
-    in wrap <:expr< TypeRep.mkFresh $str:mkName tname$ $paramList$ >>
+    in wrap <:expr< $uid:runtimename$.TypeRep.mkFresh $str:mkName tname$ $paramList$ >>
 
   let tup ctxt ts mexpr expr = 
       let params = 
         expr_list 
           (List.map (fun t -> <:expr< let module M = $expr ctxt t$ 
                                        in $mexpr$ >>) ts) in
-        wrap <:expr< Typeable.TypeRep.mkTuple $params$ >>
+        wrap <:expr< $uid:runtimename$.TypeRep.mkTuple $params$ >>
 
   let instance = object(self)
     inherit make_module_expr
@@ -74,7 +92,7 @@ module InContext (L : Loc) : TypeableClass = struct
                tags,
                <:expr< $self#call_expr ctxt t "type_rep"$::$extends$ >>)
         (<:expr< [] >>, <:expr< [] >>) tags in
-      wrap <:expr<  Typeable.TypeRep.mkPolyv $tags$ $extends$ >>
+      wrap <:expr< $uid:runtimename$.TypeRep.mkPolyv $tags$ $extends$ >>
   end
 
   let make_module_expr = instance#rhs

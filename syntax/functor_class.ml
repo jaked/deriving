@@ -9,10 +9,15 @@ open Defs
 open Camlp4.PreCast
 
 module Description : ClassDescription = struct
-  type t
   let classname = "Functor"
+  let runtimename = "Deriving_Functor"
   let default_module = None
   let allow_private = false
+  let predefs = [
+    ["list"], "list";
+    ["ref"], "ref";
+    ["option"], "option";
+  ]
 end
 
 module InContext (C : sig val context : Defs.context val loc : Camlp4.PreCast.Loc.t end) =
@@ -49,7 +54,6 @@ struct
     let rhs = 
       List.fold_right (fun p e -> <:expr< fun $p$ -> $e$ >>) patts expr in
       <:module_expr< struct
-        open Functor
         type $tdec name$ 
         let map = $rhs$
       end >>
@@ -87,7 +91,10 @@ struct
     | `Param (p,_) -> <:expr< $lid:NameMap.find p param_map$ >>
     | `Function (f,t) when not (contains_tvars t) -> 
         <:expr< fun f x -> f ($expr f$ x) >>
-    | `Constr (qname, ts) -> 
+    | `Constr (qname, ts) ->
+	let qname =
+	  try [runtimename ; List.assoc qname predefs]
+	  with Not_found -> qname in
         List.fold_left 
           (fun fn arg -> <:expr< $fn$ $expr arg$ >>)
           <:expr< $id:modname_from_qname ~qname ~classname$.map >>

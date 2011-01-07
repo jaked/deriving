@@ -1,4 +1,5 @@
 
+open Type
 open Camlp4.PreCast
 
 type context = {
@@ -15,9 +16,11 @@ module type Loc = sig
 end
 
 module type ClassDescription = sig
-  val classname: Type.name
-  val default_module: Type.name option
+  val classname: name
+  val runtimename: name
+  val default_module: name option
   val allow_private: bool
+  val predefs: (Type.qname * Type.name) list
 end
 
 module type Class = sig

@@ -9,8 +9,27 @@ open Defs
 
 module Description : ClassDescription = struct
   let classname = "Show"
+  let runtimename = "Deriving_Show"
   let default_module = Some "Defaults"
   let allow_private = true
+  let predefs = [
+    ["int"      ], "int";
+    ["bool"     ], "bool";
+    ["unit"     ], "unit";
+    ["char"     ], "char";
+    ["int32"    ], "int32";
+    ["Int32";"t"], "int32";
+    ["int64"    ], "int64";
+    ["Int64";"t"], "int64";
+    ["nativeint"], "nativeint";
+    ["float"    ], "float";
+    ["num"], "num";
+    ["string"   ], "string";
+    ["list"     ], "list";
+    ["ref"      ], "ref";
+    ["option"   ], "option";
+    ["array"    ], "array";
+  ]
 end
 
 module InContext (L : Loc) : Class = struct

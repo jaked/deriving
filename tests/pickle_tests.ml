@@ -1,8 +1,10 @@
 (*pp deriving *)
 
 open Defs
+open Deriving_Eq
+open Deriving_Pickle
 
-module Test (S : Pickle.Pickle) =
+module Test (S : Pickle) =
 struct
   let test v = S.E.eq (S.from_string (S.to_string v)) v
 end
@@ -67,8 +69,8 @@ let intseq =
 
 let seq =
   begin
-    let test = let module T = Test(Pickle_seq(Pickle.Pickle_bool)) in T.test in
-    let test' = let module T = Test(Pickle_seq(Pickle_seq(Pickle.Pickle_bool))) in T.test in
+    let test = let module T = Test(Pickle_seq(Pickle_bool)) in T.test in
+    let test' = let module T = Test(Pickle_seq(Pickle_seq(Pickle_bool))) in T.test in
 
       assert (test Nil);
       assert (test (Cons (false, Cons (true, Cons (false, Nil)))));
@@ -115,8 +117,8 @@ let poly3b =
 
 let _ =
   begin
-    let test = let module T = Test(Pickle_poly7(Pickle.Pickle_bool)) in T.test
-    and test' = let module T = Test(Pickle_poly8(Pickle.Pickle_int)) in T.test in
+    let test = let module T = Test(Pickle_poly7(Pickle_bool)) in T.test
+    and test' = let module T = Test(Pickle_poly8(Pickle_int)) in T.test in
       assert (test (Foo (`F true)));
       assert (test (Foo (`F false)));
       assert (test' {x = `G (`H (`I (Foo (`F (max_int - 1)))))});
@@ -159,14 +161,14 @@ let pmutrec =
 
 let ff1 =
   begin
-    let test = let module T = Test(Pickle_ff1(Pickle.Pickle_bool)) in T.test in    
+    let test = let module T = Test(Pickle_ff1(Pickle_bool)) in T.test in    
       assert (test (F (true,false)));
       assert (test (G 435));
   end
 
 let ff2 =
   begin
-    let test = let module T = Test(Pickle_ff2(Pickle.Pickle_bool)(Pickle.Pickle_int)) in T.test in
+    let test = let module T = Test(Pickle_ff2(Pickle_bool)(Pickle_int)) in T.test in
       assert (test (F1 (F2 (Nil, 10, None))));
       assert (test (F1 (F2 (Cons (true, Cons (false, Nil)), 10, Some 14))));
   end

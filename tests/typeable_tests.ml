@@ -1,9 +1,11 @@
 (*pp deriving *)
 
+open Deriving_Typeable
+
 type t1 = F deriving (Typeable)
 type t2 = F deriving (Typeable)
 
-let eq_types = Typeable.TypeRep.eq
+let eq_types = TypeRep.eq
 
 let _ =
   begin 
@@ -26,7 +28,7 @@ type t3 = int deriving (Typeable)
 let _ =
   begin 
     assert (eq_types
-              (Typeable.Typeable_int.type_rep ())
+              (Typeable_int.type_rep ())
               (Typeable_t3.type_rep ()));
   end
 

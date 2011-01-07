@@ -172,7 +172,7 @@ struct
   let wrap_default m = match default_module with
   | None -> m
   | Some name ->
-      <:module_expr< $uid:classname$.$uid:name$($m$) >>
+      <:module_expr< $uid:runtimename$.$uid:name$($m$) >>
 
   class virtual make_module_expr : generator =
   object (self)
@@ -201,13 +201,16 @@ struct
     method label     _ l = raise (Underivable (classname ^ " cannot be derived for label types"))
     method function_ _ f = raise (Underivable (classname ^ " cannot be derived for function types"))
 
-    method constr ctxt (qname, args) = 
+    method constr ctxt (qname, args) =
       match qname with
         | [name] when NameSet.mem name ctxt.tnames ->
             <:module_expr< $uid:Printf.sprintf "%s_%s" classname name$ >>
-        | _ -> 
+        | _ ->
+	    let qname =
+	      try [runtimename ; List.assoc qname predefs]
+	      with Not_found -> qname in
             let f = (modname_from_qname ~qname ~classname) in
-              self#mapply ctxt (Ast.MeId (loc, f)) args
+            self#mapply ctxt (Ast.MeId (loc, f)) args
 
     method expr ctxt ty = match ty with
       | `Param p    ->                   (self#param      ctxt p)
@@ -284,7 +287,7 @@ struct
       List.fold_right 
         (fun (p,_) rhs -> 
            let arg = NameMap.find p context.argmap in
-             <:module_expr< functor ($arg$ : $uid:classname$.$uid:classname$) -> $rhs$ >>)
+             <:module_expr< functor ($arg$ : $uid:runtimename$.$uid:classname$) -> $rhs$ >>)
         context.params in
     let mbinds =
       List.map 
@@ -297,7 +300,7 @@ struct
         decls in
     let sorted_mbinds = make_safe mbinds in
     let mrec =
-      <:str_item< open $uid:classname$ module rec $list:sorted_mbinds$ >> in
+      <:str_item< module rec $list:sorted_mbinds$ >> in
       match context.params with
         | [] -> mrec
         | _ ->
@@ -321,16 +324,16 @@ struct
       else
         List.fold_right
           (fun (p,_) m ->
-	    <:module_type< functor ($NameMap.find p context.argmap$ : $uid:classname$.$uid:classname$) -> $m$ >>)
+	    <:module_type< functor ($NameMap.find p context.argmap$ : $uid:runtimename$.$uid:classname$) -> $m$ >>)
           params
-          <:module_type< $uid:classname$.$uid:classname$ with type a = $atype context decl$ >>
+          <:module_type< $uid:runtimename$.$uid:classname$ with type a = $atype context decl$ >>
 
    let make_module_type context (name, _, _, _, _ as decl) =
      if name = "a" then
        raise (Underivable ("deriving: types called `a' are not allowed.\n"
                            ^"Please change the name of your type and try again."))
      else
-       <:module_type< $uid:classname$.$uid:classname$ with type a = $atype context decl$ >>
+       <:module_type< $uid:runtimename$.$uid:classname$ with type a = $atype context decl$ >>
 
     let default_generate_sigs ~make_module_sig context decls =
       let make (tname, _, _ ,_, generated as decl) =

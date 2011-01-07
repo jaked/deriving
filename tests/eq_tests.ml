@@ -1,5 +1,7 @@
 open Defs
 
+open Deriving_Eq
+
 let sum =
   begin
     assert (Eq_sum.eq S0 S0);
@@ -114,8 +116,8 @@ let poly3b =
 
 let poly7_8 = 
   begin
-    let module M7 = Eq_poly7(Eq.Eq_int) in
-    let module M8 = Eq_poly8(Eq.Eq_int) in
+    let module M7 = Eq_poly7(Eq_int) in
+    let module M8 = Eq_poly8(Eq_int) in
       assert (M7.eq (Foo (`F 0)) (Foo (`F 0)));
       assert (not (M7.eq (Foo (`F 0)) (Foo (`F 1))));
       assert (M8.eq
@@ -148,10 +150,10 @@ let mutrec =
 
 let pmutrec = 
   begin
-    let module M_a = Eq_pmutrec_a(Eq.Eq_int)(Eq.Eq_bool) in
-    let module M_b = Eq_pmutrec_b(Eq.Eq_int)(Eq.Eq_bool) in
-    let module M_c = Eq_pmutrec_c(Eq.Eq_int)(Eq.Eq_bool) in
-    let module M_d = Eq_pmutrec_d(Eq.Eq_int)(Eq.Eq_bool) in
+    let module M_a = Eq_pmutrec_a(Eq_int)(Eq_bool) in
+    let module M_b = Eq_pmutrec_b(Eq_int)(Eq_bool) in
+    let module M_c = Eq_pmutrec_c(Eq_int)(Eq_bool) in
+    let module M_d = Eq_pmutrec_d(Eq_int)(Eq_bool) in
     
     let rec cyclic_1 = SS (0, cyclic_2, true)
     and     cyclic_2 = SS (1, cyclic_1, true) in
@@ -165,7 +167,7 @@ let pmutrec =
 
 let ff1 =
   begin
-    let module M = Eq_ff1(Eq.Eq_bool) in
+    let module M = Eq_ff1(Eq_bool) in
       assert (M.eq (F (true,false)) (F (true,false)));
       assert (M.eq (G (-1)) (G (-1)));
       assert (not (M.eq (F (false,true)) (F (true,false))));
@@ -175,7 +177,7 @@ let ff1 =
 
 let ff2 = 
   begin
-    let module M = Eq_ff2(Eq.Eq_bool)(Eq.Eq_bool) in
+    let module M = Eq_ff2(Eq_bool)(Eq_bool) in
       assert (M.eq
                 (F1 (F2 (Cons (true,Nil), 0, None)))
                 (F1 (F2 (Cons (true,Nil), 0, None))));

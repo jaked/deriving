@@ -28,9 +28,9 @@ sig
   val mkPolyv : (string * delayed option) list -> delayed list -> delayed
 end =
 struct
-  module StringMap = Map.Make(Interned)
+  module StringMap = Map.Make(Deriving_interned)
   module IntMap = Map.Make(struct type t = int let compare = Pervasives.compare end)
-  module StringSet = Set.Make(Interned)
+  module StringSet = Set.Make(Deriving_interned)
 
   let counter = ref 0 
   let fresh () = 
@@ -39,7 +39,7 @@ struct
       c
   type t = 
       [`Variant of (delayed option StringMap.t)
-      |`Gen of Interned.t * delayed list ] * int
+      |`Gen of Deriving_interned.t * delayed list ] * int
 
   and delayed = unit -> t
 
@@ -80,7 +80,7 @@ struct
                that fact in the map, then look inside the types for
                evidence to the contrary *)
             equal_rows (EqualMap.record_equality equalmap lid rid) lrow rrow
-        | `Gen (lname, ls), `Gen (rname, rs) when Interned.eq lname rname ->
+        | `Gen (lname, ls), `Gen (rname, rs) when Deriving_interned.eq lname rname ->
             List.for_all2 (fun l r -> equal equalmap (l ()) (r ())) ls rs
         | _ -> false
   and equal_rows equalmap lfields rfields = 
@@ -99,7 +99,7 @@ struct
     StringSet.equal (keys lmap) (keys rmap)
 
   let mkFresh name args =
-    let t : t = `Gen (Interned.intern name, args), fresh () in
+    let t : t = `Gen (Deriving_interned.intern name, args), fresh () in
       fun () -> t
 
   let mkTuple args = 
@@ -121,7 +121,7 @@ struct
     let row = 
       List.fold_left
         (fun map (name, t) ->
-           StringMap.add (Interned.intern name) t map)
+           StringMap.add (Deriving_interned.intern name) t map)
         initial
         args in
     let fresh = make_fresh row in

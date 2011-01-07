@@ -8,17 +8,17 @@ OCAMLDEP   = ocamldep.opt
 OCAMLFLAGS =-w ae
 LIBS       = nums str unix
 
-SOURCES = show.ml           show.mli		\
-          interned.mli      interned.ml		\
-          eq.ml             eq.mli		\
-          bounded.ml        bounded.mli		\
-          enum.ml           enum.mli		\
-          monad.ml          monad.mli		\
-          dump.ml           dump.mli		\
-          typeable.ml       typeable.mli	\
-          dynmap.ml         dynmap.mli		\
-          pickle.ml	    pickle.mli    	\
-          functor.ml        functor.mli		\
+SOURCES = deriving_Show.ml           deriving_Show.mli		\
+          deriving_interned.mli      deriving_interned.ml	\
+          deriving_Eq.ml             deriving_Eq.mli		\
+          deriving_Bounded.ml        deriving_Bounded.mli	\
+          deriving_Enum.ml           deriving_Enum.mli		\
+          deriving_monad.ml          deriving_monad.mli		\
+          deriving_Dump.ml           deriving_Dump.mli		\
+          deriving_Typeable.ml       deriving_Typeable.mli	\
+          deriving_dynmap.ml         deriving_dynmap.mli	\
+          deriving_Pickle.ml	     deriving_Pickle.mli    	\
+          deriving_Functor.ml        deriving_Functor.mli	\
 
 
 RESULT  = deriving

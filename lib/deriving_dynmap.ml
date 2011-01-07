@@ -4,9 +4,10 @@
    This file is free software, distributed under the MIT license.
    See the file COPYING for details.
 *)
-open Typeable
+open Deriving_Typeable
+open Deriving_Eq
 
-module Comp (T : Typeable) (E : Eq.Eq with type a = T.a) =
+module Comp (T : Typeable) (E : Eq with type a = T.a) =
 struct
   type a = T.a
   let adjust_comparator : (T.a -> T.a -> bool) -> dynamic -> dynamic -> bool 

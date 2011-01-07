@@ -5,7 +5,7 @@
    See the file COPYING for details.
 *)
 
-open Bounded
+open Deriving_Bounded
 
 let rec rassoc (rkey : 'b) : ('a * 'b) list -> 'a = function
   | []                     -> raise Not_found
@@ -17,7 +17,7 @@ let rec last : 'a list -> 'a = function
     | [x]   -> x
     | _::xs -> last xs
 
-module Enum =
+module Deriving_Enum =
 struct
 (** Enum **)
 module type Enum = sig
@@ -121,7 +121,7 @@ module Enum_unit = Defaults' (struct
     | _ -> raise (Invalid_argument "to_enum")
 end) (Bounded_unit)
 end
-include Enum
+include Deriving_Enum
 
 type open_flag = Pervasives.open_flag  =
                  | Open_rdonly
@@ -133,7 +133,7 @@ type open_flag = Pervasives.open_flag  =
                  | Open_binary
                  | Open_text
                  | Open_nonblock
-                     deriving (Enum)
+                     deriving (Bounded,Enum)
 
 type fpclass = Pervasives.fpclass =
                | FP_normal
@@ -141,4 +141,4 @@ type fpclass = Pervasives.fpclass =
                | FP_zero
                | FP_infinite
                | FP_nan
-                   deriving (Enum)
+                   deriving (Bounded,Enum)

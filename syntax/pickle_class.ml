@@ -8,10 +8,27 @@
 open Defs
 
 module Description : ClassDescription = struct
-  type t
   let classname = "Pickle"
+  let runtimename = "Deriving_Pickle"
   let default_module = Some "Defaults"
   let allow_private = false
+  let predefs = [
+    ["int"], "int";
+    ["bool"], "bool";
+    ["unit"], "unit";
+    ["char"], "char";
+    (* ["int32"], "int32"; *)
+    (* ["Int32";"t"], "int32"; *)
+    (* ["int64"], "int64"; *)
+    (* ["Int64";"t"], "int64"; *)
+    (* ["nativeint"], "nativeint"; *)
+    ["float"], "float";
+    ["num"], "num";
+    ["string"], "string";
+    ["list"], "list";
+    ["ref"], "ref";
+    ["option"], "option";
+  ]
 end
 
 module InContext (L : Loc) : Class = struct
@@ -24,13 +41,13 @@ module InContext (L : Loc) : Class = struct
   open L
   module Helpers = Base.InContext(L)(Description)
   open Helpers
+  open Description
 
   let typeable_defaults t = <:module_expr< Typeable.Defaults($t$) >>
 
   module Typeable = Typeable_class.InContext(L)
   module Eq       = Eq_class.InContext(L)
 
-  let classname = "Pickle"
   let bind, seq = 
     let bindop = ">>=" and seqop = ">>" in
       <:expr< $lid:bindop$ >>, <:expr< $lid:seqop$ >>
@@ -62,7 +79,7 @@ module InContext (L : Loc) : Class = struct
         (<:expr< W.record
            (fun self -> function
                   | $idpat$ -> let this = (Obj.magic self : Mutable.t) in $inner$
-                  | _ -> raise (UnpicklingError $str:msg$)) $`int:List.length fields$ >>)
+                  | _ -> raise ($uid:runtimename$.UnpicklingError $str:msg$)) $`int:List.length fields$ >>)
 
   let pickle_record ctxt decl fields call_expr =
     let inner =
@@ -72,7 +89,7 @@ module InContext (L : Loc) : Class = struct
                           (fun $lid:id$ -> $e$) >>)
         fields
         <:expr< (W.store_repr this
-                   (Repr.make
+                   ($uid:runtimename$.Repr.make
                       $expr_list (List.map (fun (id,_,_) -> <:expr< $lid:id$ >>) fields)$)) >>
     in
       [ <:match_case< ($record_pattern fields$ as obj) ->
@@ -80,10 +97,10 @@ module InContext (L : Loc) : Class = struct
 
 
   let typeable_instance ctxt tname =
-    <:module_expr< Typeable.Defaults(
+    <:module_expr<
     $apply_functor <:module_expr< $uid:"Typeable_" ^ tname$ >> 
       (List.map (fun (p,_) -> <:module_expr< $uid:NameMap.find p ctxt.argmap$.T >>)
-         ctxt.params)$) >>
+         ctxt.params)$ >>
 
   let eq_instance ctxt tname =
     apply_functor <:module_expr< $uid:"Eq_" ^ tname$ >> 
@@ -103,9 +120,9 @@ module InContext (L : Loc) : Class = struct
       let rec pickle = function $list:picklers$ in pickle >> in
     [ <:str_item< module T = $tymod$ >>;
       <:str_item< module E = $eqmod$ >>;
-      <:str_item< open $uid:classname$.Write >>;
+      <:str_item< open $uid:runtimename$.Write >>;
       <:str_item< let pickle = $pickle$ >>;
-      <:str_item< open $uid:classname$.Read >>;
+      <:str_item< open $uid:runtimename$.Read >>;
       <:str_item< let unpickle = $unpickler$ >> ]
 
     let instance = object (self)
@@ -118,7 +135,7 @@ module InContext (L : Loc) : Class = struct
       let pidlist = patt_list (List.map (fun (id,_) -> <:patt< $lid:id$ >>) ids) in
       let _, tpatt,texpr = tuple ~param:"id" nts in
       let tymod =
-	<:module_expr< Typeable.Defaults(struct
+	<:module_expr< Deriving_Typeable.Defaults(struct
 	  type a = ($atype_expr ctxt (`Tuple ts)$)
 	  $list:(Typeable.tup ctxt ts <:expr< M.T.type_rep >> self#expr)$
 	end) >>
@@ -134,7 +151,7 @@ module InContext (L : Loc) : Class = struct
                <:expr< $bind$ ($self#call_expr ctxt t "pickle"$ $lid:id$) 
                             (fun $lid:id$ -> $expr$) >>)
             ids
-            <:expr< W.store_repr this (Repr.make $eidlist$) >> in
+            <:expr< W.store_repr this ($uid:runtimename$.Repr.make $eidlist$) >> in
           [ <:match_case< ($tpatt$ as obj) -> 
                   W.allocate obj (fun this -> $inner$) >>]
 
@@ -149,7 +166,7 @@ module InContext (L : Loc) : Class = struct
           <:expr< W.tuple
             (function
                | $pidlist$ -> $inner$
-               | _ -> raise (UnpicklingError $str:msg$)) >> in
+               | _ -> raise ($uid:runtimename$.UnpicklingError $str:msg$)) >> in
         wrap ctxt ~tymod ~eqmod ~picklers ~unpickler
 
     method polycase ctxt tagspec : Ast.match_case = match tagspec with
@@ -158,7 +175,7 @@ module InContext (L : Loc) : Class = struct
           W.allocate obj
               (fun thisid -> 
                  W.store_repr thisid
-                    (Repr.make ~constructor:$`int:(tag_hash name)$ [])) >>
+                    ($uid:runtimename$.Repr.make ~constructor:$`int:(tag_hash name)$ [])) >>
     | Tag (name, Some t) -> <:match_case< 
         (`$name$ v1 as obj) ->
            W.allocate obj
@@ -166,7 +183,7 @@ module InContext (L : Loc) : Class = struct
              $bind$ ($self#call_expr ctxt t "pickle"$ v1)
                     (fun mid -> 
                     (W.store_repr thisid
-                        (Repr.make ~constructor:$`int:(tag_hash name)$ [mid])))) >>
+                        ($uid:runtimename$.Repr.make ~constructor:$`int:(tag_hash name)$ [mid])))) >>
     | Extends t -> 
         let patt, guard, cast = cast_pattern ctxt t in <:match_case<
          ($patt$ as obj) when $guard$ ->
@@ -191,9 +208,9 @@ module InContext (L : Loc) : Class = struct
         (fun t exp -> <:expr<
            let module M = $(self#expr ctxt t)$ in
              try $exp$
-             with UnknownTag (n,_) -> (M.unpickle id :> a Read.m) >>)
+             with $uid:runtimename$.UnknownTag (n,_) -> (M.unpickle id :> a $uid:runtimename$.Read.m) >>)
         ts
-        <:expr< raise (UnknownTag (n, ($str:"Unexpected tag encountered during unpickling of "
+        <:expr< raise ($uid:runtimename$.UnknownTag (n, ($str:"Unexpected tag encountered during unpickling of "
                                        ^tname$))) >>
     in <:match_case< n,_ -> $inner$ >>
 
@@ -219,7 +236,7 @@ module InContext (L : Loc) : Class = struct
                           (fun $lid:Printf.sprintf "id%d" n$ -> $tail$)>>)
         params'
         (List.range 0 nparams)
-        <:expr< W.store_repr thisid (Repr.make ~constructor:$`int:n$ $expr_list ids$) >> in
+        <:expr< W.store_repr thisid ($uid:runtimename$.Repr.make ~constructor:$`int:n$ $expr_list ids$) >> in
       match params' with
         | [] -> <:match_case< $uid:name$ as obj -> 
                               W.allocate obj (fun thisid -> $exp$) >>,
@@ -249,7 +266,7 @@ module InContext (L : Loc) : Class = struct
       ~picklers
       ~unpickler:<:expr< fun id -> 
         let f = function $list:unpicklers$ 
-                 | n,_ -> raise (UnpicklingError ($str:"Unexpected tag when unpickling "
+                 | n,_ -> raise ($uid:runtimename$.UnpicklingError ($str:"Unexpected tag when unpickling "
                                                   ^tname^": "$^ string_of_int n))
         in W.sum f id >>
 

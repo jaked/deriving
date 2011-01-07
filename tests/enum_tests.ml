@@ -1,4 +1,5 @@
 open Defs
+open Deriving_Enum
 
 let nullsum = 
   begin
@@ -74,7 +75,7 @@ let poly0 =
     
 let t =
   begin
-    ListLabels.iter (Enum.Enum_int.enum_from_to (-1000) 1000)
+    ListLabels.iter (Enum_int.enum_from_to (-1000) 1000)
       ~f:(fun i -> 
             assert (Enum_t.succ i = i+1);
             assert (Enum_t.pred i = i-1);

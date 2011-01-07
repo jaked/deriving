@@ -8,10 +8,16 @@
 open Defs
 
 module Description : ClassDescription = struct
-  type t
   let classname = "Enum"
+  let runtimename = "Deriving_Enum"
   let default_module = Some "Defaults"
   let allow_private = false
+  let predefs = [
+    ["int"], "int";
+    ["bool"], "bool";
+    ["unit"], "unit";
+    ["char"], "char";
+  ]
 end
 
 module InContext (L : Loc) : Class = struct

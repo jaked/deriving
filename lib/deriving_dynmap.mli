@@ -1,8 +1,9 @@
 (* Finite map : dynamic |-> t *)
 
-open Typeable
+open Deriving_Typeable
+open Deriving_Eq
 
-module Comp (T : Typeable) (E : Eq.Eq with type a = T.a) :
+module Comp (T : Typeable) (E : Eq with type a = T.a) :
 sig
   type a = T.a
   val eq : dynamic -> dynamic -> bool

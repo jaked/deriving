@@ -1,8 +1,9 @@
 (*pp deriving *)
 
 open Defs
+open Deriving_Dump
 
-module Test (D : Dump.Dump) =
+module Test (D : Dump) =
 struct
   let test v = D.from_string (D.to_string v) = v
 end
@@ -30,7 +31,7 @@ let intseq = begin
 end
 
 let seq = begin
-  let module T = Test (Dump_seq (Dump.Dump_bool)) in
+  let module T = Test (Dump_seq (Dump_bool)) in
     assert (T.test Nil);
     assert (T.test (Cons (true, Cons (false, Cons (true, Nil)))));
 end
@@ -68,8 +69,8 @@ let poly3b = begin
 end
 
 let poly7 = begin
-    let module T  = Test(Dump_poly7(Dump.Dump_bool)) in
-    let module T' = Test(Dump_poly8(Dump.Dump_int))  in
+    let module T  = Test(Dump_poly7(Dump_bool)) in
+    let module T' = Test(Dump_poly8(Dump_int))  in
       assert (T.test (Foo (`F true)));
       assert (T.test (Foo (`F false)));
       assert (T'.test {x = `G (`H (`I (Foo (`F (max_int - 1)))))});
@@ -108,13 +109,13 @@ let pmutrec = begin
 end
 
 let ff1 = begin
-  let module T = Test(Dump_ff1(Dump.Dump_bool)) in    
+  let module T = Test(Dump_ff1(Dump_bool)) in    
     assert (T.test (F (true,false)));
     assert (T.test (G 435));
 end
 
 let ff2 = begin
-  let module T = Test(Dump_ff2(Dump.Dump_bool)(Dump.Dump_int)) in
+  let module T = Test(Dump_ff2(Dump_bool)(Dump_int)) in
     assert (T.test (F1 (F2 (Nil, 10, None))));
     assert (T.test (F1 (F2 (Cons (true, Cons (false, Nil)), 10, Some 14))));
 end

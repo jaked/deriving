@@ -1,3 +1,7 @@
+open Deriving_Typeable
+open Deriving_Eq
+open Deriving_Dump
+
 type id
 
 (* representation of values of user-defined types *)
@@ -9,8 +13,8 @@ end
 (* Utilities for serialization *)
 module Write : sig
   type s
-  include Monad.Monad_state_type with type state = s
-  module Utils (T : Typeable.Typeable) (E : Eq.Eq with type a = T.a) : sig
+  include Deriving_monad.Monad_state_type with type state = s
+  module Utils (T : Typeable) (E : Eq with type a = T.a) : sig
     val allocate : T.a -> (id -> unit m) -> id m
     val store_repr : id -> Repr.t -> unit m
   end
@@ -19,8 +23,8 @@ end
 (* Utilities for deserialization *)
 module Read : sig
   type s
-  include Monad.Monad_state_type with type state = s
-  module Utils (T : Typeable.Typeable) : sig
+  include Deriving_monad.Monad_state_type with type state = s
+  module Utils (T : Typeable) : sig
     val sum    : (int * id list -> T.a m)  -> (id -> T.a m)
     val tuple  : (id list -> T.a m)        -> (id -> T.a m)
     val record : (T.a -> id list -> T.a m) -> int -> (id -> T.a m)
@@ -33,8 +37,8 @@ exception UnknownTag of int * string
 module type Pickle =
 sig
   type a
-  module T : Typeable.Typeable with type a = a
-  module E : Eq.Eq with type a = a
+  module T : Typeable with type a = a
+  module E : Eq with type a = a
   val pickle : a -> id Write.m
   val unpickle : id -> a Read.m
   val to_buffer : Buffer.t -> a -> unit
@@ -48,8 +52,8 @@ end
 module Defaults
   (S : sig
      type a
-     module T : Typeable.Typeable with type a = a
-     module E : Eq.Eq with type a = a
+     module T : Typeable with type a = a
+     module E : Eq with type a = a
      val pickle : a -> id Write.m
      val unpickle : id -> a Read.m
    end) : Pickle with type a = S.a
@@ -66,7 +70,7 @@ module Pickle_list (V0 : Pickle)  : Pickle with type a = V0.a list
 module Pickle_ref (S : Pickle) : Pickle with type a = S.a ref
 
 module Pickle_from_dump
-  (P : Dump.Dump)
-  (E : Eq.Eq with type a = P.a)
-  (T : Typeable.Typeable with type a = P.a)
+  (P : Dump)
+  (E : Eq with type a = P.a)
+  (T : Typeable with type a = P.a)
   : Pickle with type a = P.a

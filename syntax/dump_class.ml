@@ -8,10 +8,26 @@
 open Defs
 
 module Description : ClassDescription = struct
-  type t
   let classname = "Dump"
+  let runtimename = "Deriving_Dump"
   let default_module = Some "Defaults"
   let allow_private = false
+  let predefs = [
+    ["unit"], "unit";
+    ["bool"], "bool";
+    ["char"], "char";
+    ["int"], "int";
+    ["int32"], "int32";
+    ["Int32";"t"], "int32";
+    ["int64"], "int64";
+    ["Int64";"t"], "int64";
+    ["nativeint"], "nativeint";
+    ["float"], "float";
+    ["num"], "num";
+    ["string"], "string";
+    ["list"], "list";
+    ["option"], "option";
+  ]
 end
 
 module InContext (L : Loc) : Class = struct
@@ -24,6 +40,7 @@ module InContext (L : Loc) : Class = struct
   open L
   module Helpers = Base.InContext(L)(Description)
   open Helpers
+  open Description
 
   let wrap ?(buffer="buffer") ?(stream="stream") to_buffer from_stream =
     [ <:str_item< let to_buffer $lid:buffer$ = function $list:to_buffer$ >> ;
@@ -48,7 +65,7 @@ module InContext (L : Loc) : Class = struct
         <:module_expr< $wrap dumpers undump$ >>
 
     method polycase ctxt tagspec n : Ast.match_case * Ast.match_case = 
-      let dumpn = <:expr< Dump_int.to_buffer buffer $`int:n$ >> in
+      let dumpn = <:expr< $uid:runtimename$.$uid:classname^ "_int"$.to_buffer buffer $`int:n$ >> in
         match tagspec with
           | Tag (name, args) -> (match args with 
               | None   -> <:match_case< `$name$ -> $dumpn$ >>,
@@ -65,14 +82,14 @@ module InContext (L : Loc) : Class = struct
 
     method case ctxt (ctor,args) n =
       match args with 
-        | [] -> (<:match_case< $uid:ctor$ -> Dump_int.to_buffer buffer $`int:n$ >>,
+        | [] -> (<:match_case< $uid:ctor$ -> $uid:runtimename$.$uid:classname^ "_int"$.to_buffer buffer $`int:n$ >>,
                  <:match_case< $`int:n$ -> $uid:ctor$ >>)
         | _ -> 
         let nargs = List.length args in
         let tvars, patt, exp = tuple nargs in
         let dump, undump = self#nargs ctxt (List.zip tvars args) in
         <:match_case< $uid:ctor$ $patt$ -> 
-                      Dump_int.to_buffer buffer $`int:n$;
+                      $uid:runtimename$.$uid:classname^ "_int"$.to_buffer buffer $`int:n$;
                       $dump$ >>,
         <:match_case< $`int:n$ -> let $patt$ = $undump$ in $uid:ctor$ $exp$  >>
     
@@ -89,8 +106,8 @@ module InContext (L : Loc) : Class = struct
       let dumpers, undumpers = 
         List.split (List.mapn (self#case ctxt) summands) in
       let undumpers =
-        <:expr< match Dump_int.from_stream stream with $list:undumpers$ 
-                | n -> raise (Dump_error
+        <:expr< match $uid:runtimename$.$uid:classname^ "_int"$.from_stream stream with $list:undumpers$ 
+                | n -> raise ($uid:runtimename$.$uid:classname^ "_error"$
 				(Printf.sprintf $str:msg$ n (Stream.count stream))) >>
       in
       wrap dumpers undumpers
@@ -114,8 +131,8 @@ module InContext (L : Loc) : Class = struct
       let dumpers, undumpers = 
         List.split (List.mapn (self#polycase ctxt) tags) in
       let undumpers =
-          <:expr< match Dump_int.from_stream stream with $list:undumpers$ 
-                  | n -> raise (Dump_error
+          <:expr< match $uid:runtimename$.$uid:classname^ "_int"$.from_stream stream with $list:undumpers$ 
+                  | n -> raise ($uid:runtimename$.$uid:classname^ "_error"$
                                   (Printf.sprintf $str:msg$ n (Stream.count stream))) >>
       in
       wrap (dumpers @ [ <:match_case< _ -> assert false >>]) undumpers

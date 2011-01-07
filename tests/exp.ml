@@ -1,15 +1,21 @@
 (*pp deriving *)
 
+open Deriving_Eq
+open Deriving_Dump
+open Deriving_Typeable
+open Deriving_Pickle
+
+
 module Env = Bimap.Make(String)
 
 type name = string deriving (Show, Dump, Typeable)
-module Eq_string : Eq.Eq with type a = name =
+module Eq_string : Eq with type a = name =
 struct
   type a = name
   let eq = (=)
 end 
 module Pickle_name
-  = Pickle.Pickle_from_dump(Dump_string)(Eq_string)(Typeable_string)
+  = Pickle_from_dump(Dump_string)(Eq_string)(Typeable_string)
 
 module rec Exp :
 sig

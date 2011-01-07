@@ -17,7 +17,7 @@ module Defaults
 
 module Defaults' 
   (E : sig type a val from_enum : a -> int val to_enum : int -> a end) 
-  (B : Bounded.Bounded with type a = E.a)
+  (B : Deriving_Bounded.Bounded with type a = E.a)
   : Enum with type a = B.a
 
 module Enum_bool : Enum with type a = bool

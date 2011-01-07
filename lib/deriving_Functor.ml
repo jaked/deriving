@@ -1,4 +1,4 @@
-open Monad
+open Deriving_monad
 
 (* Copyright Jeremy Yallop 2007.
    This file is free software, distributed under the MIT license.
@@ -21,8 +21,8 @@ struct
 end
 
 
-module Functor_option = MonadFunctor(Monad.Monad_option)
-module Functor_list = MonadFunctor(Monad.Monad_list)
+module Functor_option = MonadFunctor(Monad_option)
+module Functor_list = MonadFunctor(Monad_list)
 
 module Functor_map (O : Map.OrderedType) 
   : Functor with type 'a f = 'a Map.Make(O).t =
