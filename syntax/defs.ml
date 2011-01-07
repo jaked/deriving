@@ -35,6 +35,8 @@ class type virtual generator = object
       method constr: context -> Type.qname * Type.expr list -> Ast.module_expr
       method param: context -> Type.param -> Ast.module_expr
 
+      method call_expr: context -> Type.expr -> string -> Ast.expr
+
       method virtual sum:
 	  ?eq:Type.expr -> context ->
 	    Type.decl -> Type.summand list -> Ast.module_expr
@@ -78,7 +80,6 @@ module type ClassHelpers = sig
       context -> ?param:string -> Type.expr -> Ast.patt * Ast.expr * Ast.expr
 
   (* Should not be exported once "call_expr" is defined... *)
-  val mproject: Ast.module_expr -> string -> Ast.expr
   val atype_expr: context -> Type.expr -> Ast.ctyp
   val atype: context -> Type.decl -> Ast.ctyp
   val apply_functor: Ast.module_expr -> Ast.module_expr list -> Ast.module_expr

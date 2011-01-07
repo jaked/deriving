@@ -48,23 +48,23 @@ module InContext (L : Loc) : Class = struct
           <:match_case< `$uid:name$ x ->
                          $in_hovbox <:expr< 
                             Format.pp_print_string formatter $str:"`" ^ name ^" "$;
-                            $mproject (self#expr ctxt e) "format"$ formatter x >>$ >>
+                            $self#call_expr ctxt e "format"$ formatter x >>$ >>
       | Extends t -> 
           let patt, guard, cast = cast_pattern ctxt t in
             <:match_case<
               $patt$ when $guard$ -> 
-              $in_hovbox <:expr< $mproject (self#expr ctxt t) "format"$ formatter $cast$ >>$ >>
+              $in_hovbox <:expr< $self#call_expr ctxt t "format"$ formatter $cast$ >>$ >>
 
     method nargs ctxt (exprs : (name * Type.expr) list) : Ast.expr =
       match exprs with
         | [id,t] -> 
-              <:expr< $mproject (self#expr ctxt t) "format"$ formatter $lid:id$ >>
+              <:expr< $self#call_expr ctxt t "format"$ formatter $lid:id$ >>
         | exprs ->
             let fmt = 
               "@[<hov 1>("^ String.concat ",@;" (List.map (fun _ -> "%a") exprs) ^")@]" in
               List.fold_left
                 (fun f (id, t) ->
-                   <:expr< $f$ $mproject (self#expr ctxt t) "format"$ $lid:id$ >>)
+                   <:expr< $f$ $self#call_expr ctxt t "format"$ $lid:id$ >>)
                 <:expr< Format.fprintf formatter $str:fmt$ >>
                 exprs
 
@@ -91,7 +91,7 @@ module InContext (L : Loc) : Class = struct
     
     method field ctxt : Type.field -> Ast.expr = function
       | (name, ([], t), _) -> <:expr< Format.pp_print_string formatter $str:name ^ " ="$;
-                                      $mproject (self#expr ctxt t) "format"$ formatter $lid:name$ >>
+                                      $self#call_expr ctxt t "format"$ formatter $lid:name$ >>
       | f -> raise (Underivable ("Show cannot be derived for record types with polymorphic fields")) 
 
     method sum ?eq ctxt decl summands = wrap ctxt decl (List.map (self#case ctxt) summands)

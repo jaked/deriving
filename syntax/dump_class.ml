@@ -36,8 +36,8 @@ module InContext (L : Loc) : Class = struct
     method nargs ctxt (exprs : (name * Type.expr) list) : Ast.expr * Ast.expr =
       List.fold_right
         (fun (id,t) (p,u) -> 
-           <:expr< $mproject (self#expr ctxt t) "to_buffer"$ buffer $lid:id$; $p$ >>,
-           <:expr< let $lid:id$ = $mproject (self#expr ctxt t) "from_stream"$ stream in $u$ >>)
+           <:expr< $self#call_expr ctxt t "to_buffer"$ buffer $lid:id$; $p$ >>,
+           <:expr< let $lid:id$ = $self#call_expr ctxt t "from_stream"$ stream in $u$ >>)
         exprs (<:expr<>>, <:expr< $tuple_expr (List.map (fun (id,_) -> <:expr< $lid:id$ >>) exprs)$>>)
 
     method tuple ctxt ts = 
@@ -56,14 +56,14 @@ module InContext (L : Loc) : Class = struct
               | None   -> <:match_case< `$name$ -> $dumpn$ >>,
                           <:match_case< $`int:n$ -> `$name$ >>
               | Some e -> <:match_case< `$name$ x -> $dumpn$;
-                                         $mproject (self#expr ctxt e) "to_buffer"$ buffer x >>,
+                                         $self#call_expr ctxt e "to_buffer"$ buffer x >>,
                           <:match_case< $`int:n$ -> 
-                                        `$name$ ($mproject (self#expr ctxt e) "from_stream"$ stream) >>)
+                                        `$name$ ($self#call_expr ctxt e "from_stream"$ stream) >>)
           | Extends t -> 
               let patt, guard, cast = cast_pattern ctxt t in
                 <:match_case< $patt$ when $guard$ -> 
-                               $dumpn$; $mproject (self#expr ctxt t) "to_buffer"$ buffer $cast$ >>,
-                <:match_case< $`int:n$ -> ($mproject (self#expr ctxt t) "from_stream"$ stream :> a) >>
+                               $dumpn$; $self#call_expr ctxt t "to_buffer"$ buffer $cast$ >>,
+                <:match_case< $`int:n$ -> ($self#call_expr ctxt t "from_stream"$ stream :> a) >>
 
     method case ctxt (ctor,args) n =
       match args with 
@@ -82,8 +82,8 @@ module InContext (L : Loc) : Class = struct
       | (name, _, `Mutable) -> 
           raise (Underivable ("Dump cannot be derived for record types with mutable fields ("^name^")"))
       | (name, ([], t), _) -> 
-          <:expr< $mproject (self#expr ctxt t) "to_buffer"$ buffer $lid:name$ >>,
-          <:expr< $mproject (self#expr ctxt t) "from_stream"$ stream >>
+          <:expr< $self#call_expr ctxt t "to_buffer"$ buffer $lid:name$ >>,
+          <:expr< $self#call_expr ctxt t "from_stream"$ stream >>
       | f -> raise (Underivable ("Dump cannot be derived for record types with polymorphic fields")) 
 
     method sum ?eq ctxt ((tname,_,_,_,_) as decl) summands = 

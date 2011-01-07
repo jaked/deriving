@@ -69,13 +69,13 @@ module InContext (L : Loc) : EqClass = struct
     | Tag (name, None) -> <:match_case< `$name$, `$name$ -> true >>
     | Tag (name, Some e) -> <:match_case< 
         `$name$ l, `$name$ r -> 
-           $mproject (self#expr ctxt e) "eq"$ l r >>
+           $self#call_expr ctxt e "eq"$ l r >>
     | Extends t -> 
         let lpatt, lguard, lcast = cast_pattern ctxt ~param:"l" t in
         let rpatt, rguard, rcast = cast_pattern ctxt ~param:"r" t in
           <:match_case<
             ($lpatt$, $rpatt$) when $lguard$ && $rguard$ ->
-            $mproject (self#expr ctxt t) "eq"$ $lcast$ $rcast$ >>
+            $self#call_expr ctxt t "eq"$ $lcast$ $rcast$ >>
   
   method case ctxt : Type.summand -> Ast.match_case = 
     fun (name,args) ->
@@ -87,11 +87,11 @@ module InContext (L : Loc) : EqClass = struct
             and rpatt, rexpr = tuple ~param:"r" nargs in
               <:match_case<
                 ($uid:name$ $lpatt$, $uid:name$ $rpatt$) ->
-                   $mproject (self#expr ctxt (`Tuple args)) "eq"$ $lexpr$ $rexpr$ >> 
+                   $self#call_expr ctxt (`Tuple args) "eq"$ $lexpr$ $rexpr$ >> 
               
   method field ctxt : Type.field -> Ast.expr = function
     | (name, ([], t), `Immutable) -> <:expr<
-        $mproject (self#expr ctxt t) "eq"$ $lid:lprefix ^ name$ $lid:rprefix ^ name$ >>
+        $self#call_expr ctxt t "eq"$ $lid:lprefix ^ name$ $lid:rprefix ^ name$ >>
     | (_, _, `Mutable) -> assert false
     | f -> raise (Underivable ("Eq cannot be derived for record types with polymorphic fields")) 
 

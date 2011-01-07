@@ -42,7 +42,7 @@ module InContext (L : Loc) : Class = struct
                (Record (List.map (fun (n,p,_) -> (n,p,`Mutable)) fields))), [])$
       end in $e$ >>
 
-  let unpickle_record ctxt (tname,_,_,_,_ as decl) fields expr = 
+  let unpickle_record ctxt (tname,_,_,_,_ as decl) fields call_expr = 
     let msg = "unexpected object encountered unpickling "^tname in
     let assignments = 
       List.fold_right
@@ -53,7 +53,7 @@ module InContext (L : Loc) : Class = struct
     let inner = 
       List.fold_right
         (fun (id,([],t),_) exp ->
-           <:expr< $bind$ ($mproject (expr ctxt t) "unpickle"$ $lid:id$)
+           <:expr< $bind$ ($call_expr ctxt t "unpickle"$ $lid:id$)
              (fun $lid:id$ -> $exp$) >>)
         fields
         assignments in
@@ -64,11 +64,11 @@ module InContext (L : Loc) : Class = struct
                   | $idpat$ -> let this = (Obj.magic self : Mutable.t) in $inner$
                   | _ -> raise (UnpicklingError $str:msg$)) $`int:List.length fields$ >>)
 
-  let pickle_record ctxt decl fields expr =
+  let pickle_record ctxt decl fields call_expr =
     let inner =
       List.fold_right 
         (fun (id,([],t),_) e ->
-           <:expr< $bind$ ($mproject (expr ctxt t) "pickle"$ $lid:id$) 
+           <:expr< $bind$ ($call_expr ctxt t "pickle"$ $lid:id$) 
                           (fun $lid:id$ -> $e$) >>)
         fields
         <:expr< (W.store_repr this
@@ -122,7 +122,7 @@ module InContext (L : Loc) : Class = struct
         let inner = 
           List.fold_right
             (fun (id,t) expr -> 
-               <:expr< $bind$ ($mproject (self#expr ctxt t) "pickle"$ $lid:id$) 
+               <:expr< $bind$ ($self#call_expr ctxt t "pickle"$ $lid:id$) 
                             (fun $lid:id$ -> $expr$) >>)
             ids
             <:expr< W.store_repr this (Repr.make $eidlist$) >> in
@@ -134,7 +134,7 @@ module InContext (L : Loc) : Class = struct
         let inner = 
           List.fold_right 
             (fun (id,t) expr ->
-               <:expr< $bind$ ($mproject (self#expr ctxt t) "unpickle"$ $lid:id$) (fun $lid:id$ -> $expr$) >>)
+               <:expr< $bind$ ($self#call_expr ctxt t "unpickle"$ $lid:id$) (fun $lid:id$ -> $expr$) >>)
             ids
             <:expr< return $texpr$ >> in
           <:expr< W.tuple
@@ -155,19 +155,19 @@ module InContext (L : Loc) : Class = struct
         (`$name$ v1 as obj) ->
            W.allocate obj
             (fun thisid ->
-             $bind$ ($mproject (self#expr ctxt t) "pickle"$ v1)
+             $bind$ ($self#call_expr ctxt t "pickle"$ v1)
                     (fun mid -> 
                     (W.store_repr thisid
                         (Repr.make ~constructor:$`int:(tag_hash name)$ [mid])))) >>
     | Extends t -> 
         let patt, guard, cast = cast_pattern ctxt t in <:match_case<
          ($patt$ as obj) when $guard$ ->
-            ($mproject (self#expr ctxt t) "pickle"$ $cast$) >>
+            ($self#call_expr ctxt t "pickle"$ $cast$) >>
 
     method polycase_un ctxt tagspec : Ast.match_case = match tagspec with
     | (name, None)   -> <:match_case< $`int:(tag_hash name)$, [] -> return `$name$ >>
     | (name, Some t) -> <:match_case< $`int:(tag_hash name)$, [x] -> 
-      $bind$ ($mproject (self#expr ctxt t) "unpickle"$ x) (fun o -> return (`$name$ o)) >>
+      $bind$ ($self#call_expr ctxt t "unpickle"$ x) (fun o -> return (`$name$ o)) >>
 
     method extension ctxt tname ts : Ast.match_case =
       (* Try each extension in turn.  If we get an UnknownTag failure,
@@ -207,7 +207,7 @@ module InContext (L : Loc) : Class = struct
     let exp = 
       List.fold_right2
         (fun p n tail -> 
-           <:expr< $bind$ ($mproject (self#expr ctxt p) "pickle"$ $lid:Printf.sprintf "v%d" n$)
+           <:expr< $bind$ ($self#call_expr ctxt p "pickle"$ $lid:Printf.sprintf "v%d" n$)
                           (fun $lid:Printf.sprintf "id%d" n$ -> $tail$)>>)
         params'
         (List.range 0 nparams)
@@ -246,8 +246,8 @@ module InContext (L : Loc) : Class = struct
 
   method record ?eq ctxt (tname,_,_,_,_ as decl) (fields : Type.field list) = 
       wrap ~ctxt ~atype:(atype ctxt decl) 
-        ~picklers:(pickle_record ctxt decl fields (self#expr))
-        ~unpickler:(unpickle_record ctxt decl fields (self#expr))
+        ~picklers:(pickle_record ctxt decl fields self#call_expr)
+        ~unpickler:(unpickle_record ctxt decl fields self#call_expr)
         ~tymod:(typeable_instance ctxt tname)
         ~eqmod:(eq_instance ctxt tname)
   end

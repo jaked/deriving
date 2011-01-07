@@ -68,11 +68,11 @@ module InContext (L : Loc) : TypeableClass = struct
         (fun (tags, extends) -> function
            | Tag (l, None)  -> <:expr< ($str:l$, None) :: $tags$ >>, extends
            | Tag (l,Some t) ->
-               <:expr< ($str:l$, Some $mproject (self#expr ctxt t) "type_rep"$) ::$tags$ >>,
+               <:expr< ($str:l$, Some $self#call_expr ctxt t "type_rep"$) ::$tags$ >>,
                extends
            | Extends t -> 
                tags,
-               <:expr< $mproject (self#expr ctxt t) "type_rep"$::$extends$ >>)
+               <:expr< $self#call_expr ctxt t "type_rep"$::$extends$ >>)
         (<:expr< [] >>, <:expr< [] >>) tags in
       <:module_expr< Defaults(
         struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$

@@ -201,6 +201,9 @@ struct
         | `Expr e -> self#expr ctxt e
         | `Variant v -> self# variant ctxt decl v
         | `Nothing -> <:module_expr< >>
+
+    method call_expr ctxt ty name = mproject (self#expr ctxt ty) name
+
   end
 
   let atype_expr ctxt expr = 
