@@ -1,3 +1,17 @@
+The patches in these repository are propositions, that will hopefuly
+be merged in the main repository maintened by jaked.
+
+Currently, it contains small bug fixes and code simplifications.
+
+A long time target is to add a second code generator that use
+first-class modules instead of recursive module. It will eventually
+allow deriving non-regular datatypes.
+
+Grégoire Henry
+henry@pps.jussieu.fr
+
+######
+
 Typing `make' in this directory should build both the preprocessor
 (syntax/deriving) and the libraries (lib/deriving.cma,
 lib/deriving.cmxa).
