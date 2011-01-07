@@ -130,11 +130,11 @@ struct
     | [x] -> x
     | x::xs -> Ast.ExTup (loc, List.fold_left (fun e t -> Ast.ExCom (loc, e,t)) x xs)
 
-  let tuple ?(param="v") n : Ast.patt * Ast.expr =
+  let tuple ?(param="v") n : string list * Ast.patt * Ast.expr =
     let v n = Printf.sprintf "%s%d" param n in
       match n with
-        | 0 -> <:patt< () >>, <:expr< () >>
-        | 1 -> <:patt< $lid:v 0$ >>, <:expr< $lid:v 0$ >>
+        | 0 -> [], <:patt< () >>, <:expr< () >>
+        | 1 -> [v 0], <:patt< $lid:v 0$ >>, <:expr< $lid:v 0$ >>
         | n -> 
             let patts, exprs = 
               (* At time of writing I haven't managed to write anything
@@ -145,7 +145,7 @@ struct
                 (List.map (fun n -> <:patt< $lid:v n$ >>, <:expr< $lid:v n $ >>)
                    (List.range 0 n))
             in
-              Ast.PaTup (loc, patts), Ast.ExTup (loc, exprs)
+              List.map v (List.range 0 n), Ast.PaTup (loc, patts), Ast.ExTup (loc, exprs)
 
   let rec modname_from_qname ~qname ~classname =
     match qname with 

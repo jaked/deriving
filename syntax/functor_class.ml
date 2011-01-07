@@ -114,7 +114,7 @@ struct
     | (name, []) -> <:match_case< $uid:name$ -> $uid:name$ >>
     | (name, args) -> 
         let f = tup args 
-        and tpatt, texp = tuple (List.length args) in
+        and _, tpatt, texp = tuple (List.length args) in
           <:match_case< $uid:name$ $tpatt$ -> let $tpatt$ = ($f$ $texp$) in $uid:name$ ($texp$) >>
 
   and field (name, (_,t), _) : Ast.expr =

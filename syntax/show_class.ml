@@ -69,22 +69,21 @@ module InContext (L : Loc) : Class = struct
 
     method tuple ctxt args = 
       let n = List.length args in
-      let tpatt, _ = tuple n in
-      let names = List.mapn (fun t n -> Printf.sprintf "v%d" n, t) args in
-      wrap [ <:match_case< $tpatt$ -> $self#nargs ctxt names$ >> ]
+      let tvars, tpatt, _ = tuple n in
+      wrap [ <:match_case< $tpatt$ -> $self#nargs ctxt (List.zip tvars args)$ >> ]
 
     method case ctxt : Type.summand -> Ast.match_case = 
       fun (name, args) ->
         match args with 
           | [] -> <:match_case< $uid:name$ -> Format.pp_print_string formatter $str:name$ >>
           | _ -> 
-              let patt, exp = tuple (List.length args) in
+              let tvars, patt, exp = tuple (List.length args) in
                 <:match_case<
                   $uid:name$ $patt$ ->
                   $in_hovbox <:expr<
                     Format.pp_print_string formatter $str:name$;
                 Format.pp_print_break formatter 1 2;
-                $self#nargs ctxt (List.mapn (fun t n -> Printf.sprintf "v%d" n, t) args)$ >>$ >>
+                $self#nargs ctxt (List.zip tvars args)$ >>$ >>
     
     method field ctxt : Type.field -> Ast.expr = function
       | (name, ([], t), _) -> <:expr< Format.pp_print_string formatter $str:name ^ " ="$;

@@ -73,7 +73,7 @@ module type ClassHelpers = sig
   val patt_list: Ast.patt list -> Ast.patt
 
   val tuple_expr: Ast.expr list -> Ast.expr
-  val tuple: ?param:string -> int -> Ast.patt * Ast.expr
+  val tuple: ?param:string -> int -> string list * Ast.patt * Ast.expr
 
   val cast_pattern:
       context -> ?param:string -> Type.expr -> Ast.patt * Ast.expr * Ast.expr

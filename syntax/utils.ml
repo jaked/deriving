@@ -61,6 +61,11 @@ struct
       | [] -> []
       | x::xs -> f x n :: aux (n+1) xs in
       aux init
+
+  let rec zip xs ys = match xs, ys with
+  | [], [] -> []
+  | x::xs, y::ys -> (x, y) :: zip xs ys
+  | _, _ -> invalid_arg "List.zip"
 end
 
 module F =

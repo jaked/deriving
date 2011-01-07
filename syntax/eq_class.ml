@@ -82,8 +82,8 @@ module InContext (L : Loc) : EqClass = struct
         | [] -> <:match_case< ($uid:name$, $uid:name$) -> true >>
         | _ -> 
             let nargs = List.length args in
-            let lpatt, lexpr = tuple ~param:"l" nargs
-            and rpatt, rexpr = tuple ~param:"r" nargs in
+            let _, lpatt, lexpr = tuple ~param:"l" nargs
+            and _, rpatt, rexpr = tuple ~param:"r" nargs in
               <:match_case<
                 ($uid:name$ $lpatt$, $uid:name$ $rpatt$) ->
                    $self#call_expr ctxt (`Tuple args) "eq"$ $lexpr$ $rexpr$ >> 

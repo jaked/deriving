@@ -43,7 +43,7 @@ module InContext (L : Loc) : Class = struct
       let dumpers, undump = 
         let n = List.length ts in 
         let pinner, undump = self#nargs ctxt (List.mapn (fun t n -> (Printf.sprintf "v%d" n, t)) ts) in
-        let patt, expr = tuple n in
+        let _, patt, _ = tuple n in
           [ <:match_case< $patt$ -> $pinner$ >> ], undump in
         <:module_expr< $wrap dumpers undump$ >>
 
@@ -69,8 +69,8 @@ module InContext (L : Loc) : Class = struct
                  <:match_case< $`int:n$ -> $uid:ctor$ >>)
         | _ -> 
         let nargs = List.length args in
-        let patt, exp = tuple nargs in
-        let dump, undump = self#nargs ctxt (List.mapn (fun t n -> (Printf.sprintf "v%d" n, t)) args) in
+        let tvars, patt, exp = tuple nargs in
+        let dump, undump = self#nargs ctxt (List.zip tvars args) in
         <:match_case< $uid:ctor$ $patt$ -> 
                       Dump_int.to_buffer buffer $`int:n$;
                       $dump$ >>,

@@ -116,7 +116,7 @@ module InContext (L : Loc) : Class = struct
       let ids = (List.mapn (fun t n -> (Printf.sprintf "id%d" n, t)) ts) in
       let eidlist = expr_list (List.map (fun (id,_) -> <:expr< $lid:id$ >>) ids) in
       let pidlist = patt_list (List.map (fun (id,_) -> <:patt< $lid:id$ >>) ids) in
-      let tpatt,texpr = tuple ~param:"id" nts in
+      let _, tpatt,texpr = tuple ~param:"id" nts in
       let tymod =
 	<:module_expr< Typeable.Defaults(struct
 	  type a = ($atype_expr ctxt (`Tuple ts)$)
@@ -224,9 +224,10 @@ module InContext (L : Loc) : Class = struct
         | [] -> <:match_case< $uid:name$ as obj -> 
                               W.allocate obj (fun thisid -> $exp$) >>,
                 <:match_case< $`int:n$, [] -> return $uid:name$ >>
-        | _  -> <:match_case< $uid:name$ $fst (tuple ~param:"v" nparams)$ as obj -> 
+        | _  -> let _, tpatt, _ = tuple ~param:"v" nparams in
+	        <:match_case< $uid:name$ $tpatt$ as obj -> 
                               W.allocate obj (fun thisid -> $exp$) >>,
-    let _, tuple = tuple ~param:"id" nparams in
+    let _, _, tuple = tuple ~param:"id" nparams in
     let patt, exp = 
       List.fold_right2 
         (fun n t (pat, exp) ->
