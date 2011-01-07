@@ -4,17 +4,27 @@
    This file is free software, distributed under the MIT license.
    See the file COPYING for details.
 *)
-module InContext (L : Base.Loc) =
-struct
+
+open Defs
+
+module Description : ClassDescription = struct
+  let classname = "Show"
+  let default_module = Some "Defaults"
+  let allow_private = true
+end
+
+module InContext (L : Loc) : Class = struct
+
   open Base
   open Utils
   open Type
   open Camlp4.PreCast
-  include Base.InContext(L)
-  
-  let classname = "Show"
-    
-  let wrap (ctxt:Base.context) (decl : Type.decl) matches = <:module_expr< 
+
+  open L
+  module Helpers = Base.InContext(L)(Description)
+  open Helpers
+
+  let wrap (ctxt:context) (decl : Type.decl) matches = <:module_expr< 
   struct type $Ast.TyDcl (loc, "a", [], atype ctxt decl, [])$
          let format formatter = function $list:matches$ end >>
     
@@ -28,7 +38,7 @@ struct
 
 
   let instance = object (self)
-    inherit make_module_expr ~classname ~allow_private:true
+    inherit make_module_expr
     
     method polycase ctxt : Type.tagspec -> Ast.match_case = function
       | Tag (name, None) -> 
@@ -98,13 +108,11 @@ struct
     method variant ctxt decl (_,tags) = wrap ctxt decl (List.map (self#polycase ctxt) tags
                                                         @ [ <:match_case< _ -> assert false >> ])
   end
+
+  let make_module_expr = instance#rhs
+  let generate = default_generate ~make_module_expr ~make_module_type
+  let generate_sigs = default_generate_sigs ~make_module_sig
+
 end
 
-let _ = Base.register "Show" 
-  ((fun (loc, context, decls) -> 
-      let module M = InContext(struct let loc = loc end) in   
-        M.generate ~context ~decls ~make_module_expr:M.instance#rhs ~classname:M.classname
-          ~default_module:"Defaults" ()),
-   (fun (loc, context, decls) ->
-      let module M = InContext(struct let loc = loc end) in
-        M.gen_sigs ~classname:M.classname ~context ~decls))
+module Show = Base.Register(Description)(InContext)

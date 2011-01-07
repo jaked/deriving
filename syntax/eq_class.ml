@@ -5,15 +5,33 @@
    See the file COPYING for details.
 *)
 
-module InContext (L : Base.Loc) =
-struct
+open Defs
+
+module Description : ClassDescription = struct
+  type t
+  let classname = "Eq"
+  let default_module = None
+  let allow_private = true
+end
+
+module type EqClass = sig
+  include Class
+  val tup:
+      context -> Type.expr list -> Camlp4.PreCast.Ast.expr ->
+	(context -> Type.expr -> Camlp4.PreCast.Ast.module_expr) ->
+	  Camlp4.PreCast.Ast.module_expr
+end
+
+module InContext (L : Loc) : EqClass = struct
+
   open Base
   open Utils
   open Type
   open Camlp4.PreCast
-  include Base.InContext(L)
 
-  let classname = "Eq"
+  open L
+  module Helpers = Base.InContext(L)(Description)
+  open Helpers
 
   let lprefix = "l" and rprefix = "r"
 
@@ -43,7 +61,7 @@ struct
 
 
   let instance = object (self)
-    inherit make_module_expr ~classname ~allow_private:true
+    inherit make_module_expr
 
   method tuple ctxt ts = tup ctxt ts <:expr< M.eq >> (self#expr)
     
@@ -105,14 +123,11 @@ struct
                                        $list:List.map (self#polycase ctxt) tags$
                                        | _ -> false end >>
   end
+
+  let make_module_expr = instance#rhs
+  let generate = default_generate ~make_module_expr ~make_module_type
+  let generate_sigs = default_generate_sigs ~make_module_sig
+
 end
 
-let _ = Base.register "Eq" 
-  ((fun (loc, context, decls) -> 
-     let module M = InContext(struct let loc = loc end) in
-       M.generate ~context ~decls ~make_module_expr:M.instance#rhs ~classname:M.classname
-         ~default_module:"Defaults" ()),
-   (fun (loc, context, decls) -> 
-      let module M = InContext(struct let loc = loc end) in
-        M.gen_sigs ~context ~decls ~classname:M.classname))
-
+module Eq = Base.Register(Description)(InContext)

@@ -388,7 +388,29 @@ struct
                 (substitute_aliases (NameMap.union_disjoint aliases))) decls)
 end
 
-module Untranslate (C:sig val loc : Camlp4.PreCast.Ast.Loc.t end) =
+module type Untranslate = sig
+  open Camlp4.PreCast
+  val param: string * [< `Minus | `Plus ] option -> Ast.ctyp
+  val qname: string list -> Ast.ident
+  val unlist: ('a -> Ast.ctyp -> Ast.ctyp) -> 'b list -> ('b -> 'a) -> Ast.ctyp
+  val pair: Ast.ctyp -> Ast.ctyp -> Ast.ctyp
+  val bar:  Ast.ctyp -> Ast.ctyp -> Ast.ctyp
+  val semi: Ast.ctyp -> Ast.ctyp -> Ast.ctyp
+  val comma: Ast.ctyp -> Ast.ctyp -> Ast.ctyp
+  val and_: Ast.ctyp -> Ast.ctyp -> Ast.ctyp
+  val expr: expr -> Ast.ctyp
+  val poly: param list * expr -> Ast.ctyp
+  val rhs: rhs -> Ast.ctyp
+  val tagspec: tagspec -> Ast.ctyp
+  val summand: summand -> Ast.ctyp
+  val field: field -> Ast.ctyp
+  val repr: repr -> Ast.ctyp
+  val constraint_: expr * expr -> Ast.ctyp * Ast.ctyp
+  val decl: decl -> Ast.ctyp
+  val sigdecl: decl -> Ast.ctyp list
+end
+
+module Untranslate (C:sig val loc : Camlp4.PreCast.Ast.Loc.t end) : Untranslate =
 struct
   open Camlp4.PreCast
   open C

@@ -5,14 +5,25 @@
    See the file COPYING for details.
 *)
 
-module InContext (L : Base.Loc) =
-struct
+open Defs
+
+module Description : ClassDescription = struct
+  type t
+  let classname = "Pickle"
+  let default_module = Some "Defaults"
+  let allow_private = false
+end
+
+module InContext (L : Loc) : Class = struct
+
   open Base
   open Utils
   open Type
   open Camlp4.PreCast
-  include Base.InContext(L)
-  module UT = Type.Untranslate(L)
+
+  open L
+  module Helpers = Base.InContext(L)(Description)
+  open Helpers
 
   let typeable_defaults t = <:module_expr< Typeable.Defaults($t$) >>
 
@@ -26,7 +37,7 @@ struct
 
   let unpickle_record_bindings ctxt (tname,params,rhs,cs,_) (fields : field list) e = <:expr<
       let module Mutable = struct
-        type $Ast.TyDcl (loc, "t", [], UT.repr 
+        type $Ast.TyDcl (loc, "t", [], Untranslate.repr 
             (instantiate_modargs_repr ctxt 
                (Record (List.map (fun (n,p,_) -> (n,p,`Mutable)) fields))), [])$
       end in $e$ >>
@@ -97,7 +108,7 @@ struct
     end >>
 
     let instance = object (self)
-    inherit make_module_expr ~classname ~allow_private:false
+    inherit make_module_expr
 
     method tuple ctxt ts = 
       let nts = List.length ts in
@@ -240,13 +251,11 @@ struct
         ~tymod:(typeable_instance ctxt tname)
         ~eqmod:(eq_instance ctxt tname)
   end
+
+  let make_module_expr = instance#rhs
+  let generate = default_generate ~make_module_expr ~make_module_type
+  let generate_sigs = default_generate_sigs ~make_module_sig
+
 end
 
-let _ = Base.register "Pickle"
-  ((fun (loc, context, decls) -> 
-      let module M = InContext(struct let loc = loc end) in
-        M.generate ~context ~decls ~make_module_expr:M.instance#rhs ~classname:M.classname
-          ~default_module:"Defaults" ()),
-   (fun (loc, context, decls) -> 
-      let module M = InContext(struct let loc = loc end) in
-        M.gen_sigs ~context ~decls ~classname:M.classname))
+module Pickle = Base.Register(Description)(InContext)

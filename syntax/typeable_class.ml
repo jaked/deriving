@@ -5,14 +5,33 @@
    See the file COPYING for details.
 *)
 
-module InContext (L : Base.Loc) =
-struct
-  open Type
-  open Base
-  open Camlp4.PreCast
-  include Base.InContext(L)
+open Defs
 
+module Description : ClassDescription = struct
+  type t
   let classname = "Typeable"
+  let default_module = Some "Defaults"
+  let allow_private = true
+end
+
+module type TypeableClass = sig
+  include Class
+  val tup:
+      context -> Type.expr list -> Camlp4.PreCast.Ast.expr ->
+	(context -> Type.expr -> Camlp4.PreCast.Ast.module_expr) ->
+	  Camlp4.PreCast.Ast.module_expr
+end
+
+module InContext (L : Loc) : TypeableClass = struct
+
+  open Base
+  open Utils
+  open Type
+  open Camlp4.PreCast
+
+  open L
+  module Helpers = Base.InContext(L)(Description)
+  open Helpers
 
   let mkName : name -> string = 
     let file_name, sl, _, _, _, _, _, _ = Loc.to_tuple loc in
@@ -38,7 +57,7 @@ struct
                                        let type_rep = Typeable.TypeRep.mkTuple $params$ end) >>
 
   let instance = object(self)
-    inherit make_module_expr ~classname ~allow_private:true 
+    inherit make_module_expr
 
     method tuple ctxt ts = tup ctxt ts <:expr< M.type_rep >> (self#expr)
     method sum = gen 
@@ -60,13 +79,11 @@ struct
                let type_rep = Typeable.TypeRep.mkPolyv $tags$ $extends$
         end) >>
   end
+
+  let make_module_expr = instance#rhs
+  let generate = default_generate ~make_module_expr ~make_module_type
+  let generate_sigs = default_generate_sigs ~make_module_sig
+
 end
 
-let _ = Base.register "Typeable" 
-  ((fun (loc, context, decls) -> 
-     let module M = InContext(struct let loc = loc end) in
-       M.generate ~context ~decls ~make_module_expr:M.instance#rhs ~classname:M.classname
-         ~default_module:"Defaults" ()),
-  (fun (loc, context, decls) -> 
-     let module M = InContext(struct let loc = loc end) in
-       M.gen_sigs ~context ~decls ~classname:M.classname))
+module Typeable = Base.Register(Description)(InContext)

@@ -5,15 +5,25 @@
    See the file COPYING for details.
 *)
 
-module InContext (L : Base.Loc) =
-struct
+open Defs
+
+module Description : ClassDescription = struct
+  type t
+  let classname = "Dump"
+  let default_module = Some "Defaults"
+  let allow_private = false
+end
+
+module InContext (L : Loc) : Class = struct
+
   open Base
   open Utils
   open Type
   open Camlp4.PreCast
-  include Base.InContext(L)
 
-  let classname = "Dump"
+  open L
+  module Helpers = Base.InContext(L)(Description)
+  open Helpers
 
   let wrap ~atype ~dumpers ~undump =
     <:module_expr< struct type $Ast.TyDcl (loc, "a", [], atype, [])$
@@ -21,7 +31,7 @@ struct
                           let from_stream stream = $undump$ end >>
 
   let instance = object (self)
-    inherit make_module_expr ~classname ~allow_private:false
+    inherit make_module_expr
 
     method nargs ctxt (exprs : (name * Type.expr) list) : Ast.expr * Ast.expr =
       List.fold_right
@@ -109,13 +119,11 @@ struct
                                                 (Printf.sprintf $str:msg$ n
                                                    (Stream.count stream))) >>
   end
+
+  let make_module_expr = instance#rhs
+  let generate = default_generate ~make_module_expr ~make_module_type
+  let generate_sigs = default_generate_sigs ~make_module_sig
+
 end
 
-let _ = Base.register "Dump"
-  ((fun (loc, context, decls) -> 
-     let module M = InContext(struct let loc = loc end) in
-       M.generate ~context ~decls ~make_module_expr:M.instance#rhs ~classname:M.classname
-         ~default_module:"Defaults" ()),
-   (fun (loc, context, decls) -> 
-      let module M = InContext(struct let loc = loc end) in
-        M.gen_sigs ~context ~decls ~classname:M.classname))
+module Dump = Base.Register(Description)(InContext)

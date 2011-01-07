@@ -7,17 +7,8 @@
 
 open Utils
 open Type
+open Defs
 open Camlp4.PreCast
-
-type context = {
-  loc : Loc.t;
-  (* mapping from type parameters to functor arguments *)
-  argmap : name NameMap.t;
-  (* ordered list of type parameters *)
-  params : param list;
-  (* type names *)
-  tnames : NameSet.t;
-}
 
 exception Underivable of string
 exception NoSuchClass of string
@@ -26,8 +17,6 @@ exception NoSuchClass of string
 let error loc (msg : string) =
   Syntax.print_warning loc msg;
   exit 1
-
-module type Loc = sig val loc : Loc.t end
 
 let contains_tvars, contains_tvars_decl =
   let o = object
@@ -38,10 +27,12 @@ let contains_tvars, contains_tvars_decl =
        | e -> default#expr e
   end in (o#expr, o#decl)
 
-module InContext(L : Loc) =
+module InContext(L : Loc)(D : ClassDescription) : ClassHelpers =
 struct
   include L
   module Untranslate = Untranslate(L)
+
+  open D
 
   let instantiate, instantiate_repr =
     let o lookup = object 
@@ -88,6 +79,10 @@ struct
               end in M.cast $lid:param$ )>>)
 
   let seq l r = <:expr< $l$ ; $r$ >>
+  let rec seq_list = function
+    | [] -> <:expr< () >>
+    | [e] -> e
+    | e::es -> seq e (seq_list es)
 
   let record_pattern ?(prefix="") (fields : Type.field list) : Ast.patt = 
     <:patt<{$list:
@@ -161,7 +156,7 @@ struct
   let apply_functor (f : Ast.module_expr) (args : Ast.module_expr list) : Ast.module_expr =
       List.fold_left (fun f p -> <:module_expr< $f$ ($p$) >>) f args
           
-  class virtual make_module_expr ~classname ~allow_private =
+  class virtual make_module_expr : generator =
   object (self)
 
     method mapply ctxt (funct : Ast.module_expr) args =
@@ -249,7 +244,7 @@ struct
                     | _         -> 0)
          decls)
       
-  let generate ~context ~decls ~make_module_expr ~classname ?default_module () =
+  let default_generate ~make_module_expr ~make_module_type context decls =
     (* plan: 
        set up an enclosing recursive module
        generate functors for all types in the clique
@@ -275,14 +270,10 @@ struct
     let mbinds =
       List.map 
         (fun (name,_,_,_,_ as decl) -> 
-           if name = "a" then
-             raise (Underivable ("deriving: types called `a' are not allowed.\n"
-                                 ^"Please change the name of your type and try again."))
-           else
              (decl,
               <:module_binding< 
                 $uid:classname ^ "_"^ name$
-                : $uid:classname$.$uid:classname$ with type a = $atype context decl$
+                : $make_module_type context decl$
                = $apply_defaults (make_module_expr context decl)$ >>))
         decls in
     let sorted_mbinds = make_safe mbinds in
@@ -303,22 +294,34 @@ struct
                decls in
            let m = <:str_item< module $uid:wrapper_name$ = $fixed$ >> in
              <:str_item< $m$ $list:projected$ >>
-       
-    let gen_sig ~classname ~context (tname,params,_,_,generated as decl) = 
+
+   let make_module_sig context (tname,params,_,_,generated as decl) =
       if tname = "a" then
         raise (Underivable ("deriving: types called `a' are not allowed.\n"
                             ^"Please change the name of your type and try again."))
       else
-        if generated then <:sig_item< >> 
-        else
-          let t = List.fold_right 
-            (fun (p,_) m -> <:module_type< functor ($NameMap.find p context.argmap$ : $uid:classname$.$uid:classname$) -> $m$ >>) 
-            params
-            <:module_type< $uid:classname$.$uid:classname$ with type a = $atype context decl$ >> in
-            <:sig_item< module $uid:Printf.sprintf "%s_%s" classname tname$ : $t$ >>
+        List.fold_right
+          (fun (p,_) m ->
+	    <:module_type< functor ($NameMap.find p context.argmap$ : $uid:classname$.$uid:classname$) -> $m$ >>)
+          params
+          <:module_type< $uid:classname$.$uid:classname$ with type a = $atype context decl$ >>
 
-    let gen_sigs ~classname ~context ~decls =
-      <:sig_item< $list:List.map (gen_sig ~classname ~context) decls$ >>
+   let make_module_type context (name, _, _, _, _ as decl) =
+     if name = "a" then
+       raise (Underivable ("deriving: types called `a' are not allowed.\n"
+                           ^"Please change the name of your type and try again."))
+     else
+       <:module_type< $uid:classname$.$uid:classname$ with type a = $atype context decl$ >>
+
+    let default_generate_sigs ~make_module_sig context decls =
+      let make (tname, _, _ ,_, generated as decl) =
+        if generated
+	then <:sig_item< >>
+	else
+	  let t = make_module_sig context decl in
+          <:sig_item< module $uid:Printf.sprintf "%s_%s" classname tname$ : $t$ >> in
+      <:sig_item< $list:List.map make decls$ >>
+
 end
    
 let find_non_regular params tnames decls : name list =
@@ -365,8 +368,7 @@ let setup_context loc (tdecls : decl list) : context =
               (fun (p,_) m -> NameMap.add p (Printf.sprintf "V_%s" p) m)
               params
               NameMap.empty in 
-            { loc = loc;
-              argmap = argmap;
+            { argmap = argmap;
               params = params; 
               tnames = tnames }
       
@@ -379,3 +381,19 @@ let find classname =
   with Not_found -> raise (NoSuchClass classname)
 let is_registered : name -> bool =
   fun classname -> try ignore (find classname); true with NoSuchClass _ -> false
+
+module Register
+    (Desc : ClassDescription)
+    (MakeClass : functor(L : Loc) -> Class) = struct
+
+  let generate (loc, context, decls) =
+    let module Class = MakeClass(struct let loc = loc end) in
+    Class.generate context decls
+
+  let generate_sigs (loc, context, decls) =
+    let module Class = MakeClass(struct let loc = loc end) in
+    Class.generate_sigs context decls
+
+  let _ = register Desc.classname (generate, generate_sigs)
+
+end

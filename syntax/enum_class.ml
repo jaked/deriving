@@ -5,18 +5,28 @@
    See the file COPYING for details.
 *)
 
-module InContext (L : Base.Loc) =
-struct
+open Defs
+
+module Description : ClassDescription = struct
+  type t
+  let classname = "Enum"
+  let default_module = None (* Hand made defaults... FIXME.*)
+  let allow_private = false
+end
+
+module InContext (L : Loc) : Class = struct
+
   open Base
   open Utils
   open Type
   open Camlp4.PreCast
-  include Base.InContext(L)
 
-  let classname = "Enum"
+  open L
+  module Helpers = Base.InContext(L)(Description)
+  open Helpers
 
   let instance = object(self)
-    inherit make_module_expr ~classname ~allow_private:false
+    inherit make_module_expr
 
     method sum ?eq ctxt ((tname,_,_,_,_) as decl) summands =
     let numbering = 
@@ -53,12 +63,11 @@ struct
                                                  ("Enum cannot be derived for record types (i.e. "^
                                                     tname^")"))
   end
+
+  let make_module_expr = instance#rhs
+  let generate = default_generate ~make_module_expr ~make_module_type
+  let generate_sigs = default_generate_sigs ~make_module_sig
+
 end
 
-let _ = Base.register "Enum" 
-  ((fun (loc, context, decls) -> 
-     let module M = InContext(struct let loc = loc end) in
-       M.generate ~context ~decls ~make_module_expr:M.instance#rhs ~classname:M.classname ()),
-   (fun (loc, context, decls) -> 
-      let module M = InContext(struct let loc = loc end) in
-        M.gen_sigs ~context ~decls ~classname:M.classname))
+module Enum = Base.Register(Description)(InContext)

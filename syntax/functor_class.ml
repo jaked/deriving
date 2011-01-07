@@ -5,17 +5,27 @@
    See the file COPYING for details.
 *)
 
+open Defs
 open Camlp4.PreCast
 
-module InContext (C : sig val context : Base.context val loc : Camlp4.PreCast.Loc.t end) =
+module Description : ClassDescription = struct
+  type t
+  let classname = "Functor"
+  let default_module = None
+  let allow_private = false
+end
+
+module InContext (C : sig val context : Defs.context val loc : Camlp4.PreCast.Loc.t end) =
 struct
   open C
   open Type
   open Utils
   open Base
-  include Base.InContext(C)
 
-  let classname = "Functor"
+  module Helpers = Base.InContext(C)(Description)
+  open Helpers
+
+  open Description
 
   let param_map : string NameMap.t = 
     List.fold_right
