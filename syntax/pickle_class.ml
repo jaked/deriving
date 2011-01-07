@@ -29,6 +29,7 @@ module Description : ClassDescription = struct
     ["ref"], "ref";
     ["option"], "option";
   ]
+  let depends = [Typeable_class.Typeable.depends; Eq_class.Eq.depends]
 end
 
 module InContext (L : Loc) : Class = struct
@@ -38,15 +39,11 @@ module InContext (L : Loc) : Class = struct
   open Type
   open Camlp4.PreCast
 
+  open Description
   open L
   module Helpers = Base.InContext(L)(Description)
   open Helpers
   open Description
-
-  let typeable_defaults t = <:module_expr< Typeable.Defaults($t$) >>
-
-  module Typeable = Typeable_class.InContext(L)
-  module Eq       = Eq_class.InContext(L)
 
   let bind, seq = 
     let bindop = ">>=" and seqop = ">>" in
@@ -76,7 +73,7 @@ module InContext (L : Loc) : Class = struct
         assignments in
     let idpat = patt_list (List.map (fun (id,_,_) -> <:patt< $lid:id$ >>) fields) in
       unpickle_record_bindings ctxt decl fields
-        (<:expr< W.record
+        (<:expr< R.record
            (fun self -> function
                   | $idpat$ -> let this = (Obj.magic self : Mutable.t) in $inner$
                   | _ -> raise ($uid:runtimename$.UnpicklingError $str:msg$)) $`int:List.length fields$ >>)
@@ -96,31 +93,18 @@ module InContext (L : Loc) : Class = struct
                        W.allocate obj (fun this -> $inner$) >> ]
 
 
-  let typeable_instance ctxt tname =
-    <:module_expr<
-    $apply_functor <:module_expr< $uid:"Typeable_" ^ tname$ >> 
-      (List.map (fun (p,_) -> <:module_expr< $uid:NameMap.find p ctxt.argmap$.T >>)
-         ctxt.params)$ >>
-
-  let eq_instance ctxt tname =
-    apply_functor <:module_expr< $uid:"Eq_" ^ tname$ >> 
-      (List.map (fun (p,_) -> <:module_expr< $uid:NameMap.find p ctxt.argmap$.E >>)
-         ctxt.params)
-
   let rebind_params ctxt name : Ast.str_item = 
     NameMap.fold
       (fun _ param s -> <:str_item< $s$ module $uid:param$ = $uid:param$.$uid:name$ >>)
       ctxt.argmap
       <:str_item< >>
 
-  let wrap ctxt ~tymod ~eqmod ~picklers ~unpickler =
-    let unpickler = <:expr< let module W = Utils(T) in $unpickler$ >> in
+  let wrap ctxt ~picklers ~unpickler =
+    let unpickler = <:expr< let module R = Utils(Typeable) in $unpickler$ >> in
     let pickle = <:expr<
-      let module W = Utils(T)(E) in
+      let module W = Utils(Typeable)(Eq) in
       let rec pickle = function $list:picklers$ in pickle >> in
-    [ <:str_item< module T = $tymod$ >>;
-      <:str_item< module E = $eqmod$ >>;
-      <:str_item< open $uid:runtimename$.Write >>;
+    [ <:str_item< open $uid:runtimename$.Write >>;
       <:str_item< let pickle = $pickle$ >>;
       <:str_item< open $uid:runtimename$.Read >>;
       <:str_item< let unpickle = $unpickler$ >> ]
@@ -134,17 +118,7 @@ module InContext (L : Loc) : Class = struct
       let eidlist = expr_list (List.map (fun (id,_) -> <:expr< $lid:id$ >>) ids) in
       let pidlist = patt_list (List.map (fun (id,_) -> <:patt< $lid:id$ >>) ids) in
       let _, tpatt,texpr = tuple ~param:"id" nts in
-      let tymod =
-	<:module_expr< Deriving_Typeable.Defaults(struct
-	  type a = ($atype_expr ctxt (`Tuple ts)$)
-	  $list:(Typeable.tup ctxt ts <:expr< M.T.type_rep >> self#expr)$
-	end) >>
-      and eqmod =
-	<:module_expr< struct
-	  type a = ($atype_expr ctxt (`Tuple ts)$)
-	  $list:(Eq.tup ctxt ts <:expr< M.E.eq >> self#expr)$
-	end >>
-      and picklers =
+      let picklers =
         let inner = 
           List.fold_right
             (fun (id,t) expr -> 
@@ -163,11 +137,11 @@ module InContext (L : Loc) : Class = struct
                <:expr< $bind$ ($self#call_expr ctxt t "unpickle"$ $lid:id$) (fun $lid:id$ -> $expr$) >>)
             ids
             <:expr< return $texpr$ >> in
-          <:expr< W.tuple
+          <:expr< R.tuple
             (function
                | $pidlist$ -> $inner$
                | _ -> raise ($uid:runtimename$.UnpicklingError $str:msg$)) >> in
-        wrap ctxt ~tymod ~eqmod ~picklers ~unpickler
+        wrap ctxt ~picklers ~unpickler
 
     method polycase ctxt tagspec : Ast.match_case = match tagspec with
     | Tag (name, None) -> <:match_case<
@@ -220,11 +194,9 @@ module InContext (L : Loc) : Class = struct
           (function Tag (name,t) -> Left (name,t) | Extends t -> Right t) tags in
         let tag_cases = List.map (self#polycase_un ctxt) tags in
         let extension_case = self#extension ctxt tname extensions in
-          <:expr< fun id -> W.sum (function $list:tag_cases @ [extension_case]$) id >>
+          <:expr< fun id -> R.sum (function $list:tag_cases @ [extension_case]$) id >>
       in
-        wrap ctxt ~tymod:(typeable_instance ctxt tname)
-          ~eqmod:(eq_instance ctxt tname)
-          ~picklers:(List.map (self#polycase ctxt) tags) ~unpickler
+        wrap ctxt ~picklers:(List.map (self#polycase ctxt) tags) ~unpickler
 
     method case ctors ctxt (name, params') n : Ast.match_case * Ast.match_case = 
     let nparams = List.length params' in
@@ -261,26 +233,23 @@ module InContext (L : Loc) : Class = struct
     let nctors = List.length summands in
     let picklers, unpicklers = List.split (List.mapn (self#case nctors ctxt) summands) in
     wrap ctxt
-      ~tymod:(typeable_instance ctxt tname)
-      ~eqmod:(eq_instance ctxt tname)
       ~picklers
       ~unpickler:<:expr< fun id -> 
         let f = function $list:unpicklers$ 
                  | n,_ -> raise ($uid:runtimename$.UnpicklingError ($str:"Unexpected tag when unpickling "
                                                   ^tname^": "$^ string_of_int n))
-        in W.sum f id >>
+        in R.sum f id >>
 
   method record ?eq ctxt (tname,_,_,_,_ as decl) (fields : Type.field list) = 
       wrap ctxt
         ~picklers:(pickle_record ctxt decl fields self#call_expr)
         ~unpickler:(unpickle_record ctxt decl fields self#call_expr)
-        ~tymod:(typeable_instance ctxt tname)
-        ~eqmod:(eq_instance ctxt tname)
   end
 
   let make_module_expr = instance#rhs
   let generate = default_generate ~make_module_expr ~make_module_type
   let generate_sigs = default_generate_sigs ~make_module_sig
+  let generate_expr = instance#expr
 
 end
 

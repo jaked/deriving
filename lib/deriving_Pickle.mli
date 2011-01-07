@@ -37,8 +37,8 @@ exception UnknownTag of int * string
 module type Pickle =
 sig
   type a
-  module T : Typeable with type a = a
-  module E : Eq with type a = a
+  module Typeable : Typeable with type a = a
+  module Eq : Eq with type a = a
   val pickle : a -> id Write.m
   val unpickle : id -> a Read.m
   val to_buffer : Buffer.t -> a -> unit
@@ -52,8 +52,8 @@ end
 module Defaults
   (S : sig
      type a
-     module T : Typeable with type a = a
-     module E : Eq with type a = a
+     module Typeable : Typeable with type a = a
+     module Eq : Eq with type a = a
      val pickle : a -> id Write.m
      val unpickle : id -> a Read.m
    end) : Pickle with type a = S.a

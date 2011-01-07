@@ -29,6 +29,7 @@ module Description : ClassDescription = struct
     ["ref"], "ref";
     ["option"], "option";
   ]
+  let depends = []
 end
 
 module type TypeableClass = sig
@@ -98,6 +99,7 @@ module InContext (L : Loc) : TypeableClass = struct
   let make_module_expr = instance#rhs
   let generate = default_generate ~make_module_expr ~make_module_type
   let generate_sigs = default_generate_sigs ~make_module_sig
+  let generate_expr = instance#expr
 
 end
 

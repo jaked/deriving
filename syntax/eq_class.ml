@@ -30,6 +30,7 @@ module Description : ClassDescription = struct
     ["ref"], "ref";
     ["array"], "array";
   ]
+  let depends = []
 end
 
 module type EqClass = sig
@@ -136,6 +137,7 @@ module InContext (L : Loc) : EqClass = struct
   let make_module_expr = instance#rhs
   let generate = default_generate ~make_module_expr ~make_module_type
   let generate_sigs = default_generate_sigs ~make_module_sig
+  let generate_expr = instance#expr
 
 end
 

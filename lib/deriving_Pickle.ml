@@ -205,8 +205,8 @@ end
 module type Pickle =
 sig
   type a
-  module T : Typeable with type a = a
-  module E : Eq with type a = a
+  module Typeable : Typeable with type a = a
+  module Eq : Eq with type a = a
   val pickle : a -> id Write.m
   val unpickle : id -> a Read.m
   val to_buffer : Buffer.t -> a -> unit
@@ -220,8 +220,8 @@ end
 module Defaults
   (S : sig
      type a
-     module T : Typeable with type a = a
-     module E : Eq with type a = a
+     module Typeable : Typeable with type a = a
+     module Eq : Eq with type a = a
      val pickle : a -> id Write.m
      val unpickle : id -> a Read.m
    end) : Pickle with type a = S.a =
@@ -384,8 +384,8 @@ module Pickle_from_dump
            and type a = T.a = Defaults
   (struct
      type a = T.a
-     module T = T
-     module E = E
+     module Typeable = T
+     module Eq = E
      module Comp = Deriving_dynmap.Comp(T)(E)
      open Write
      module W = Utils(T)(E)
@@ -414,13 +414,13 @@ module Pickle_string = Pickle_from_dump(Dump_string)(Eq_string)(Typeable_string)
 
 module Pickle_option (V0 : Pickle) : Pickle with type a = V0.a option = Defaults(
   struct
-    module T = Typeable_option (V0.T)
-    module E = Eq_option (V0.E)
-    module Comp = Deriving_dynmap.Comp (T) (E)
+    module Typeable = Typeable_option (V0.Typeable)
+    module Eq = Eq_option (V0.Eq)
+    module Comp = Deriving_dynmap.Comp (Typeable) (Eq)
     open Write
     type a = V0.a option
     let rec pickle =
-      let module W = Utils(T)(E) in
+      let module W = Utils(Typeable)(Eq) in
       function
           None as obj ->
             W.allocate obj
@@ -432,7 +432,7 @@ module Pickle_option (V0 : Pickle) : Pickle with type a = V0.a option = Defaults
                    W.store_repr thisid (Repr.make ~constructor:1 [id0]))
     open Read
     let unpickle = 
-      let module W = Utils(T) in
+      let module W = Utils(Typeable) in
       let f = function
         | 0, [] -> return None
         | 1, [id] -> V0.unpickle id >>= fun obj -> return (Some obj)
@@ -446,12 +446,12 @@ module Pickle_option (V0 : Pickle) : Pickle with type a = V0.a option = Defaults
 module Pickle_list (V0 : Pickle)
   : Pickle with type a = V0.a list = Defaults (
 struct
-  module T = Typeable_list (V0.T)
-  module E = Eq_list (V0.E)
-  module Comp = Deriving_dynmap.Comp (T) (E)
+  module Typeable = Typeable_list (V0.Typeable)
+  module Eq = Eq_list (V0.Eq)
+  module Comp = Deriving_dynmap.Comp (Typeable) (Eq)
   type a = V0.a list
   open Write
-  module U = Utils(T)(E)
+  module U = Utils(Typeable)(Eq)
   let rec pickle = function
       [] as obj ->
         U.allocate obj
@@ -462,7 +462,7 @@ struct
                           pickle v1 >>= fun id1 ->
                             U.store_repr this (Repr.make ~constructor:1 [id0; id1]))
   open Read
-  module W = Utils (T)
+  module W = Utils (Typeable)
   let rec unpickle id = 
     let f = function
       | 0, [] -> return []

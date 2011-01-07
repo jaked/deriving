@@ -111,6 +111,11 @@ struct
       | <:module_expr< $id:m$ >> -> <:expr< $id:m$.$lid:name$ >>
       | _ -> <:expr< let module M = $mexpr$ in M.$lid:name$ >>
 
+  let mProject mexpr name =
+    match mexpr with
+      | <:module_expr< $uid:m$ >> -> <:module_expr< $uid:m$.$uid:name$ >>
+      | _ -> <:module_expr< struct module M = $mexpr$ include M.$uid:name$ end >>
+
   let expr_list : Ast.expr list -> Ast.expr = 
       (fun exprs ->
          List.fold_right 
@@ -174,6 +179,15 @@ struct
   | Some name ->
       <:module_expr< $uid:runtimename$.$uid:name$($m$) >>
 
+  let import_depend ctxt ty depends =
+    let d = depends loc in
+    assert (ctxt.toplevel = None);
+    let ctxt = { ctxt with toplevel = Some (classname, ty) } in
+    <:str_item< module $uid:d.d_classname$ = $d.d_generate_expr ctxt ty$ >>
+
+  let import_depends ctxt ty =
+    List.map (import_depend ctxt ty) depends
+
   class virtual make_module_expr : generator =
   object (self)
 
@@ -181,6 +195,7 @@ struct
       let mexpr =
 	<:module_expr< struct
 	  type a = ($atype_expr ctxt ty$)
+	  $list:import_depends ctxt ty$
 	  $list:items$
 	end >> in
       wrap_default mexpr
@@ -193,24 +208,41 @@ struct
     method virtual record  : ?eq:expr -> context -> decl -> field list -> Ast.str_item list
     method virtual tuple   : context -> expr list -> Ast.str_item list
 
-    method param ctxt (name, variance) =
-      <:module_expr< $uid:NameMap.find name ctxt.argmap$ >>
+    method param ctxt (name, _) =
+      match ctxt.toplevel with
+      | None -> <:module_expr< $uid:NameMap.find name ctxt.argmap$ >>
+      | Some _ ->
+	  let mexpr = <:module_expr< $uid:NameMap.find name ctxt.argmap$ >> in
+	  mProject mexpr classname
+
 
     method object_   _ o = raise (Underivable (classname ^ " cannot be derived for object types"))
     method class_    _ c = raise (Underivable (classname ^ " cannot be derived for class types"))
     method label     _ l = raise (Underivable (classname ^ " cannot be derived for label types"))
     method function_ _ f = raise (Underivable (classname ^ " cannot be derived for function types"))
 
-    method constr ctxt (qname, args) =
+    method constr ctxt (qname, params) =
+      let ty : Type.expr = `Constr (qname, params) in
       match qname with
-        | [name] when NameSet.mem name ctxt.tnames ->
-            <:module_expr< $uid:Printf.sprintf "%s_%s" classname name$ >>
-        | _ ->
-	    let qname =
-	      try [runtimename ; List.assoc qname predefs]
-	      with Not_found -> qname in
-            let f = (modname_from_qname ~qname ~classname) in
-            self#mapply ctxt (Ast.MeId (loc, f)) args
+      | [name] when NameSet.mem name ctxt.tnames -> begin
+	  match ctxt.toplevel with
+	  | None -> <:module_expr< $uid:Printf.sprintf "%s_%s" classname name$ >>
+	  | Some (topclassname, (`Constr ([name], params) as ty')) when ty' = ty ->
+	      let e = apply_functor
+		  <:module_expr< $uid:Printf.sprintf "%s_%s" classname name$ >>
+	        (List.map (fun p -> self#expr ctxt p) params) in
+	      <:expr< $e$ >>
+	  | Some (topclassname, _) ->
+	      let mexpr =
+		<:module_expr< $uid:Printf.sprintf "%s_%s" topclassname name$ >> in
+	      mProject mexpr classname
+      end
+      | _ ->
+	  let qname =
+	    try [runtimename ; List.assoc qname predefs]
+	    with Not_found -> qname in
+          let f = (modname_from_qname ~qname ~classname) in
+          self#mapply ctxt (Ast.MeId (loc, f)) params
 
     method expr ctxt ty = match ty with
       | `Param p    ->                   (self#param      ctxt p)
@@ -392,7 +424,9 @@ let setup_context loc (tdecls : decl list) : context =
               NameMap.empty in 
             { argmap = argmap;
               params = params; 
-              tnames = tnames }
+              tnames = tnames;
+	      toplevel = None;
+	    }
       
 type deriver = Loc.t * context * Type.decl list -> Ast.str_item
 and sigderiver = Loc.t * context * Type.decl list -> Ast.sig_item
@@ -415,6 +449,11 @@ module Register
   let generate_sigs (loc, context, decls) =
     let module Class = MakeClass(struct let loc = loc end) in
     Class.generate_sigs context decls
+
+  let depends loc =
+    let module Class = MakeClass(struct let loc = loc end) in
+    { d_classname = Desc.classname;
+      d_generate_expr = Class.generate_expr }
 
   let _ = register Desc.classname (generate, generate_sigs)
 

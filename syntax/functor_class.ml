@@ -18,6 +18,7 @@ module Description : ClassDescription = struct
     ["ref"], "ref";
     ["option"], "option";
   ]
+  let depends = []
 end
 
 module InContext (C : sig val context : Defs.context val loc : Camlp4.PreCast.Loc.t end) =

@@ -30,6 +30,7 @@ module Description : ClassDescription = struct
     ["option"   ], "option";
     ["array"    ], "array";
   ]
+  let depends = []
 end
 
 module InContext (L : Loc) : Class = struct
@@ -127,6 +128,7 @@ module InContext (L : Loc) : Class = struct
   let make_module_expr = instance#rhs
   let generate = default_generate ~make_module_expr ~make_module_type
   let generate_sigs = default_generate_sigs ~make_module_sig
+  let generate_expr = instance#expr
 
 end
 

@@ -9,11 +9,18 @@ type context = {
   params : Type.param list;
   (* type names *)
   tnames : Type.NameSet.t;
+  (* For class dependencies, e.g. Pickle. *)
+  toplevel : (Type.name * Type.expr) option
 }
 
 module type Loc = sig
   val loc : Loc.t (* location of the type definition being derived *)
 end
+
+type dependency = {
+    d_classname: string;
+    d_generate_expr: context -> Type.expr -> Ast.module_expr;
+  }
 
 module type ClassDescription = sig
   val classname: name
@@ -21,11 +28,13 @@ module type ClassDescription = sig
   val default_module: name option
   val allow_private: bool
   val predefs: (Type.qname * Type.name) list
+  val depends:  (Loc.t -> dependency) list
 end
 
 module type Class = sig
   val generate: context -> Type.decl list -> Ast.str_item
   val generate_sigs: context -> Type.decl list -> Ast.sig_item
+  val generate_expr: context -> Type.expr -> Ast.module_expr
 end
 
 class type virtual generator = object

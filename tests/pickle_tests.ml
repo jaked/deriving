@@ -6,7 +6,7 @@ open Deriving_Pickle
 
 module Test (S : Pickle) =
 struct
-  let test v = S.E.eq (S.from_string (S.to_string v)) v
+  let test v = S.Eq.eq (S.from_string (S.to_string v)) v
 end
 
 let sum =
