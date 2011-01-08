@@ -96,10 +96,7 @@ module type ClassHelpers = sig
   val cast_pattern:
       context -> ?param:string -> Type.expr -> Ast.patt * Ast.expr * Ast.expr
 
-  (* Should not be exported once "call_expr" is defined... *)
-  val atype_expr: context -> Type.expr -> Ast.ctyp
-  val atype: context -> Type.decl -> Ast.ctyp
-  val apply_functor: Ast.module_expr -> Ast.module_expr list -> Ast.module_expr
+  (* For Functor only *)
   val modname_from_qname:  qname:string list -> classname:string -> Ast.ident
   val substitute: Type.name Type.NameMap.t -> Type.expr -> Type.expr
 
