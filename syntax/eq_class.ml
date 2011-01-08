@@ -33,15 +33,7 @@ module Description : ClassDescription = struct
   let depends = []
 end
 
-module type EqClass = sig
-  include Class
-  val tup:
-      context -> Type.expr list -> Camlp4.PreCast.Ast.expr ->
-	(context -> Type.expr -> Camlp4.PreCast.Ast.module_expr) ->
-	  Camlp4.PreCast.Ast.str_item list
-end
-
-module InContext (L : Loc) : EqClass = struct
+module InContext (L : Loc) : Class = struct
 
   open Base
   open Utils
@@ -51,87 +43,80 @@ module InContext (L : Loc) : EqClass = struct
   open L
   module Helpers = Base.InContext(L)(Description)
   open Helpers
+  open Description
 
   let lprefix = "l" and rprefix = "r"
-
-  let wildcard_failure = <:match_case< _ -> false >>
 
   let wrap eq =
     [ <:str_item< let eq l r = match l, r with $list:eq$ >>]
 
-  let tup ctxt ts mexpr exp = 
-      match ts with
-        | [t] ->
-	    wrap [ <:match_case< (l,r) -> let module M = $exp ctxt t$ in $mexpr$ l r >> ]
-        | ts ->
-            let _, (lpatt, rpatt), expr = 
-              List.fold_right
-                (fun t (n, (lpatt, rpatt), expr) ->
-                   let lid = Printf.sprintf "l%d" n and rid = Printf.sprintf "r%d" n in
-                     (n+1,
-                      (Ast.PaCom (loc,<:patt< $lid:lid$ >>, lpatt),
-                       Ast.PaCom (loc,<:patt< $lid:rid$ >>, rpatt)),
-                      <:expr< let module M = $exp ctxt t$ 
-                              in $mexpr$ $lid:lid$ $lid:rid$ && $expr$ >>))
-                ts
-                (0, (<:patt< >>, <:patt< >>), <:expr< true >>)
-            in 
-            wrap [ <:match_case< $Ast.PaTup(loc, Ast.PaCom(loc, Ast.PaTup(loc, lpatt),Ast.PaTup(loc, rpatt)))$ -> $expr$ >> ]
-
   let instance = object (self)
+
     inherit make_module_expr
 
-  method tuple ctxt ts = tup ctxt ts <:expr< M.eq >> (self#expr)
-    
-  method polycase ctxt : Type.tagspec -> Ast.match_case = function
-    | Tag (name, None) -> <:match_case< `$name$, `$name$ -> true >>
-    | Tag (name, Some e) -> <:match_case< 
-        `$name$ l, `$name$ r -> 
-           $self#call_expr ctxt e "eq"$ l r >>
-    | Extends t -> 
-        let lpatt, lguard, lcast = cast_pattern ctxt ~param:"l" t in
-        let rpatt, rguard, rcast = cast_pattern ctxt ~param:"r" t in
-          <:match_case<
-            ($lpatt$, $rpatt$) when $lguard$ && $rguard$ ->
-            $self#call_expr ctxt t "eq"$ $lcast$ $rcast$ >>
-  
-  method case ctxt : Type.summand -> Ast.match_case = 
-    fun (name,args) ->
-      match args with 
-        | [] -> <:match_case< ($uid:name$, $uid:name$) -> true >>
-        | _ -> 
-            let nargs = List.length args in
-            let _, lpatt, lexpr = tuple ~param:"l" nargs
-            and _, rpatt, rexpr = tuple ~param:"r" nargs in
-              <:match_case<
-                ($uid:name$ $lpatt$, $uid:name$ $rpatt$) ->
-                   $self#call_expr ctxt (`Tuple args) "eq"$ $lexpr$ $rexpr$ >> 
-              
-  method field ctxt : Type.field -> Ast.expr = function
-    | (name, ([], t), `Immutable) -> <:expr<
-        $self#call_expr ctxt t "eq"$ $lid:lprefix ^ name$ $lid:rprefix ^ name$ >>
-    | (_, _, `Mutable) -> assert false
-    | f -> raise (Underivable ("Eq cannot be derived for record types with polymorphic fields")) 
+    method tuple ctxt tys =
+      let n = List.length tys in
+      let lnames, lpatt, _ = tuple ~param:lprefix n in
+      let rnames, rpatt, _ = tuple ~param:rprefix n in
+      let test_and ty (lid, rid) e =
+	<:expr< $self#call_expr ctxt ty "eq"$ $lid:lid$ $lid:rid$ && $e$ >> in
+      let expr =
+        List.fold_right2 test_and tys (List.zip lnames rnames) <:expr< true >> in
+      wrap [ <:match_case< (($lpatt$),($rpatt$)) -> $expr$ >> ]
 
-  method sum ?eq ctxt decl summands =
-    let wildcard = match summands with [_] -> [] | _ -> [ <:match_case< _ -> false >>] in
-    wrap (List.map (self#case ctxt) summands @ wildcard)
 
-  method record ?eq ctxt decl fields = 
-    if List.exists (function (_,_,`Mutable) -> true | _ -> false) fields then
-       wrap [ <:match_case< (l,r) -> l==r >> ]
-    else
-    let lpatt = record_pattern ~prefix:"l" fields
-    and rpatt = record_pattern ~prefix:"r" fields 
-    and expr = 
-      List.fold_right
-        (fun f e -> <:expr< $self#field ctxt f$ && $e$ >>)
-        fields
-        <:expr< true >>
-    in wrap [ <:match_case< (($lpatt$), ($rpatt$)) -> $expr$ >> ]
+    method case ctxt (name,args) =
+      match args with
+      | [] -> <:match_case< ($uid:name$, $uid:name$) -> true >>
+      | _ ->
+          let nargs = List.length args in
+          let _, lpatt, lexpr = tuple ~param:lprefix nargs
+          and _, rpatt, rexpr = tuple ~param:rprefix nargs in
+	  let patt = <:patt< ($uid:name$ $lpatt$, $uid:name$ $rpatt$) >> in
+	  let eq =
+	    <:expr< $self#call_expr ctxt (`Tuple args) "eq"$ $lexpr$ $rexpr$ >> in
+          <:match_case< $patt$ -> $eq$ >>
 
-  method variant ctxt decl (spec, tags) = 
-    wrap (List.map (self#polycase ctxt) tags @ [wildcard_failure])
+    method sum ?eq ctxt tname params constraints summands =
+      let wildcard =
+	match summands with
+	| [_] -> []
+	| _ -> [ <:match_case< _ -> false >>] in
+      wrap (List.map (self#case ctxt) summands @ wildcard)
+
+
+    method field ctxt (name, (vars, ty), mut) =
+      assert(mut <> `Mutable);
+      if vars <> [] then
+	raise (Underivable (classname ^ " cannot be derived for record types "
+			    ^ "with polymorphic fields"));
+      <:expr< $self#call_expr ctxt ty "eq"$ $lid:lprefix ^ name$ $lid:rprefix ^ name$ >>
+
+    method record ?eq ctxt tname params constraints fields =
+      if List.exists (function (_,_,`Mutable) -> true | _ -> false) fields then
+	wrap [ <:match_case< (l,r) -> l==r >> ]
+      else
+	let lpatt = record_pattern ~prefix:lprefix fields in
+	let rpatt = record_pattern ~prefix:rprefix fields in
+	let test_and f e = <:expr< $self#field ctxt f$ && $e$ >> in
+	let expr = List.fold_right test_and fields <:expr< true >> in
+	wrap [ <:match_case< (($lpatt$), ($rpatt$)) -> $expr$ >> ]
+
+
+    method polycase ctxt : Type.tagspec -> Ast.match_case = function
+      | Tag (name, None) -> <:match_case< `$name$, `$name$ -> true >>
+      | Tag (name, Some e) ->
+	  <:match_case< `$name$ l, `$name$ r -> $self#call_expr ctxt e "eq"$ l r >>
+      | Extends t ->
+          let lpatt, lguard, lcast = cast_pattern ctxt ~param:"l" t in
+          let rpatt, rguard, rcast = cast_pattern ctxt ~param:"r" t in
+	  let patt = <:patt< ($lpatt$, $rpatt$) >> in
+	  let eq = <:expr< $self#call_expr ctxt t "eq"$ $lcast$ $rcast$ >> in
+          <:match_case< $patt$ when $lguard$ && $rguard$ -> $eq$ >>
+
+    method variant ctxt tname params constraints (spec, tags) =
+      wrap (List.map (self#polycase ctxt) tags @ [ <:match_case< _ -> false >> ])
+
   end
 
   let make_module_expr = instance#rhs

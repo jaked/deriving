@@ -48,95 +48,108 @@ module InContext (L : Loc) : Class = struct
       <:str_item< let from_stream $lid:stream$ = $from_stream$ >> ]
 
   let instance = object (self)
+
     inherit make_module_expr
 
-    method nargs ctxt (exprs : (name * Type.expr) list) : Ast.expr * Ast.expr =
-      List.fold_right
-        (fun (id,t) (p,u) -> 
-           <:expr< $self#call_expr ctxt t "to_buffer"$ buffer $lid:id$; $p$ >>,
-           <:expr< let $lid:id$ = $self#call_expr ctxt t "from_stream"$ stream in $u$ >>)
-        exprs (<:expr<>>, <:expr< $tuple_expr (List.map (fun (id,_) -> <:expr< $lid:id$ >>) exprs)$>>)
+    method dump_int ctxt n =
+      <:expr< $self#call_expr ctxt (`Constr (["int"],[])) "to_buffer"$
+                 buffer $`int:n$ >>
 
-    method tuple ctxt ts = 
-      let dumpers, undump = 
-        let n = List.length ts in 
-        let pinner, undump = self#nargs ctxt (List.mapn (fun t n -> (Printf.sprintf "v%d" n, t)) ts) in
-        let _, patt, _ = tuple n in
-          [ <:match_case< $patt$ -> $pinner$ >> ], undump in
-        <:module_expr< $wrap dumpers undump$ >>
+    method read_int ctxt =
+      <:expr< $self#call_expr ctxt (`Constr (["int"],[])) "from_stream"$ stream >>
 
-    method polycase ctxt tagspec n : Ast.match_case * Ast.match_case = 
-      let dumpn = <:expr< $uid:runtimename$.$uid:classname^ "_int"$.to_buffer buffer $`int:n$ >> in
-        match tagspec with
-          | Tag (name, args) -> (match args with 
-              | None   -> <:match_case< `$name$ -> $dumpn$ >>,
-                          <:match_case< $`int:n$ -> `$name$ >>
-              | Some e -> <:match_case< `$name$ x -> $dumpn$;
-                                         $self#call_expr ctxt e "to_buffer"$ buffer x >>,
-                          <:match_case< $`int:n$ -> 
-                                        `$name$ ($self#call_expr ctxt e "from_stream"$ stream) >>)
-          | Extends t -> 
-              let patt, guard, cast = cast_pattern ctxt t in
-                <:match_case< $patt$ when $guard$ -> 
-                               $dumpn$; $self#call_expr ctxt t "to_buffer"$ buffer $cast$ >>,
-                <:match_case< $`int:n$ -> ($self#call_expr ctxt t "from_stream"$ stream :> a) >>
+
+    method nargs ctxt tvars args =
+      let to_buffer id ty =
+	<:expr< $self#call_expr ctxt ty "to_buffer"$ buffer $lid:id$ >> in
+      let from_stream id ty e =
+        <:expr< let $lid:id$ = $self#call_expr ctxt ty "from_stream"$ stream in
+                $e$ >> in
+      seq_list (List.map2 to_buffer tvars args),
+      (fun expr -> List.fold_right2 from_stream tvars args expr)
+
+    method tuple ctxt tys =
+      let tvars, patt, expr = tuple (List.length tys) in
+      let dumper, undump = self#nargs ctxt tvars tys in
+      wrap [ <:match_case< $patt$ -> $dumper$ >> ] (undump expr)
+
 
     method case ctxt (ctor,args) n =
-      match args with 
-        | [] -> (<:match_case< $uid:ctor$ -> $uid:runtimename$.$uid:classname^ "_int"$.to_buffer buffer $`int:n$ >>,
-                 <:match_case< $`int:n$ -> $uid:ctor$ >>)
-        | _ -> 
-        let nargs = List.length args in
-        let tvars, patt, exp = tuple nargs in
-        let dump, undump = self#nargs ctxt (List.zip tvars args) in
-        <:match_case< $uid:ctor$ $patt$ -> 
-                      $uid:runtimename$.$uid:classname^ "_int"$.to_buffer buffer $`int:n$;
-                      $dump$ >>,
-        <:match_case< $`int:n$ -> let $patt$ = $undump$ in $uid:ctor$ $exp$  >>
-    
-    method field ctxt : Type.field -> Ast.expr * Ast.expr = function
-      | (name, _, `Mutable) -> 
-          raise (Underivable ("Dump cannot be derived for record types with mutable fields ("^name^")"))
-      | (name, ([], t), _) -> 
-          <:expr< $self#call_expr ctxt t "to_buffer"$ buffer $lid:name$ >>,
-          <:expr< $self#call_expr ctxt t "from_stream"$ stream >>
-      | f -> raise (Underivable ("Dump cannot be derived for record types with polymorphic fields")) 
+      match args with
+      | [] ->
+	  <:match_case< $uid:ctor$ -> $self#dump_int ctxt n$ >>,
+          <:match_case< $`int:n$ -> $uid:ctor$ >>
+      | _ ->
+        let tvars, patt, expr = tuple (List.length args) in
+	let expr = <:expr< $uid:ctor$ $expr$ >> in
+        let dumper, undumper = self#nargs ctxt tvars args in
+	<:match_case< $uid:ctor$ $patt$ -> $self#dump_int ctxt n$; $dumper$ >>,
+	<:match_case< $`int:n$ -> $undumper expr$ >>
 
-    method sum ?eq ctxt (tname,_,_,_,_) summands = 
+    method sum ?eq ctxt tname params constraints summands =
       let msg = "Dump: unexpected tag %d at character %d when deserialising " ^ tname in
-      let dumpers, undumpers = 
-        List.split (List.mapn (self#case ctxt) summands) in
+      let dumpers, undumpers = List.split (List.mapn (self#case ctxt) summands) in
       let undumpers =
-        <:expr< match $uid:runtimename$.$uid:classname^ "_int"$.from_stream stream with $list:undumpers$ 
+        <:expr< match $self#read_int ctxt$ with
+	        $list:undumpers$
                 | n -> raise ($uid:runtimename$.$uid:classname^ "_error"$
 				(Printf.sprintf $str:msg$ n (Stream.count stream))) >>
       in
       wrap dumpers undumpers
 
-    method record ?eq ctxt decl fields = 
-       let dumpers, undumpers = 
-         List.split (List.map (self#field ctxt) fields) in
-       let undump = 
-         List.fold_right2
-           (fun (field,_,_) undumper e -> 
-              <:expr< let $lid:field$ = $undumper$ in $e$ >>)
-           fields
-           undumpers
-           (record_expression fields) in
-       let dumpers =
-	 [ <:match_case< $record_pattern fields$ -> $List.fold_left1 seq dumpers$ >>] in
-       wrap dumpers undump
-   
-    method variant ctxt decl (_, tags) = 
-      let msg = "Dump: unexpected tag %d at character %d when deserialising polymorphic variant" in
-      let dumpers, undumpers = 
-        List.split (List.mapn (self#polycase ctxt) tags) in
+
+    method field ctxt (name, (vars, ty), mut) =
+      if mut = `Mutable then
+        raise (Underivable (classname ^ " cannot be derived for record types "
+			    ^ " with mutable fields (" ^ name ^ ")"));
+      if vars <> [] then
+	raise (Underivable (classname ^ " cannot be derived for record types "
+			    ^ "with polymorphic fields"));
+      <:expr< $self#call_expr ctxt ty "to_buffer"$ buffer $lid:name$ >>,
+      <:binding< $lid:name$ = $self#call_expr ctxt ty "from_stream"$ stream >>
+
+    method record ?eq ctxt tname params constraints fields =
+       let dumpers, undumpers = List.split (List.map (self#field ctxt) fields) in
+       let bind b e = <:expr< let $b$ in $e$ >> in
+       let undump = List.fold_right bind undumpers (record_expression fields) in
+       let dumper = <:match_case< $record_pattern fields$ -> $seq_list dumpers$ >> in
+       wrap [dumper] undump
+
+
+    method polycase ctxt tagspec n : Ast.match_case * Ast.match_case =
+      match tagspec with
+      | Tag (name, args) -> begin match args with
+        | None ->
+	    <:match_case< `$name$ -> $self#dump_int ctxt n$ >>,
+            <:match_case< $`int:n$ -> `$name$ >>
+        | Some e ->
+	    let to_buffer =
+	      <:expr< $self#call_expr ctxt e "to_buffer"$ buffer x >> in
+	    let from_stream =
+	      <:expr< $self#call_expr ctxt e "from_stream"$ stream >> in
+	    <:match_case< `$name$ x -> $self#dump_int ctxt n$; $to_buffer$ >>,
+            <:match_case< $`int:n$ -> `$name$ ($from_stream$) >> end
+      | Extends t ->
+          let patt, guard, cast = cast_pattern ctxt t in
+	  let to_buffer =
+	    <:expr< $self#call_expr ctxt t "to_buffer"$ buffer $cast$ >> in
+	  let from_stream =
+	    <:expr< $self#call_expr ctxt t "from_stream"$ stream >> in
+          <:match_case< $patt$ when $guard$ -> $self#dump_int ctxt n$; $to_buffer$ >>,
+          <:match_case< $`int:n$ -> ($from_stream$ :> a) >>
+
+    method variant ctxt tname params constraints (_, tags) =
+      let msg = "Dump: unexpected tag %d at character %d "
+	        ^ "when deserialising polymorphic variant" in
+      let dumpers, undumpers = List.split (List.mapn (self#polycase ctxt) tags) in
       let undumpers =
-          <:expr< match $uid:runtimename$.$uid:classname^ "_int"$.from_stream stream with $list:undumpers$ 
-                  | n -> raise ($uid:runtimename$.$uid:classname^ "_error"$
-                                  (Printf.sprintf $str:msg$ n (Stream.count stream))) >>
+        <:expr< match $self#read_int ctxt$ with
+	        $list:undumpers$
+                | n -> raise ($uid:runtimename$.$uid:classname^ "_error"$
+                                (Printf.sprintf $str:msg$ n (Stream.count stream))) >>
       in
       wrap (dumpers @ [ <:match_case< _ -> assert false >>]) undumpers
+
   end
 
   let make_module_expr = instance#rhs

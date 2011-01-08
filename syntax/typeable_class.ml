@@ -32,15 +32,7 @@ module Description : ClassDescription = struct
   let depends = []
 end
 
-module type TypeableClass = sig
-  include Class
-  val tup:
-      context -> Type.expr list -> Camlp4.PreCast.Ast.expr ->
-	(context -> Type.expr -> Camlp4.PreCast.Ast.module_expr) ->
-	  Camlp4.PreCast.Ast.str_item list
-end
-
-module InContext (L : Loc) : TypeableClass = struct
+module InContext (L : Loc) : Class = struct
 
   open Base
   open Utils
@@ -52,47 +44,47 @@ module InContext (L : Loc) : TypeableClass = struct
   open Helpers
   open Description
 
-  let mkName : name -> string = 
+  let mkName tname =
     let file_name, sl, _, _, _, _, _, _ = Loc.to_tuple loc in
-      Printf.sprintf "%s_%d_%f_%s" 
-        file_name sl (Unix.gettimeofday ())
+    Printf.sprintf "%s_%d_%f_%s" file_name sl (Unix.gettimeofday ()) tname
 
   let wrap type_rep = [ <:str_item< let type_rep = $type_rep$ >> ]
 
-  let gen ?eq ctxt ((tname,_,_,_,_) as decl : Type.decl) _ = 
-    let paramList = 
-      List.fold_right 
-        (fun (p,_) cdr ->
-             <:expr< $uid:NameMap.find p ctxt.argmap$.type_rep::$cdr$ >>)
-        ctxt.params
-      <:expr< [] >>
-    in wrap <:expr< $uid:runtimename$.TypeRep.mkFresh $str:mkName tname$ $paramList$ >>
-
-  let tup ctxt ts mexpr expr = 
-      let params = 
-        expr_list 
-          (List.map (fun t -> <:expr< let module M = $expr ctxt t$ 
-                                       in $mexpr$ >>) ts) in
-        wrap <:expr< $uid:runtimename$.TypeRep.mkTuple $params$ >>
-
   let instance = object(self)
+
     inherit make_module_expr
 
-    method tuple ctxt ts = tup ctxt ts <:expr< M.type_rep >> (self#expr)
-    method sum = gen 
-    method record = gen
-    method variant ctxt decl (_,tags) =
-    let tags, extends = 
-      List.fold_left 
-        (fun (tags, extends) -> function
-           | Tag (l, None)  -> <:expr< ($str:l$, None) :: $tags$ >>, extends
-           | Tag (l,Some t) ->
-               <:expr< ($str:l$, Some $self#call_expr ctxt t "type_rep"$) ::$tags$ >>,
-               extends
-           | Extends t -> 
-               tags,
-               <:expr< $self#call_expr ctxt t "type_rep"$::$extends$ >>)
-        (<:expr< [] >>, <:expr< [] >>) tags in
+    method tuple ctxt ts =
+      let params =
+        List.map (fun t -> <:expr< $self#call_expr ctxt t "type_rep"$ >>) ts in
+      wrap <:expr< $uid:runtimename$.TypeRep.mkTuple $expr_list params$ >>
+
+    method gen ?eq ctxt tname params constraints =
+      let paramList =
+	List.fold_right
+          (fun p cdr ->
+            <:expr< $self#call_expr ctxt (`Param p) "type_rep"$ :: $cdr$ >>)
+          ctxt.params
+	  <:expr< [] >> in
+      wrap <:expr< $uid:runtimename$.TypeRep.mkFresh $str:mkName tname$ $paramList$ >>
+
+    method sum ?eq ctxt tname params constraints _ =
+      self#gen ~eq ctxt tname params constraints
+    method record ?eq ctxt tname params constraints _ =
+      self#gen ~eq ctxt tname params constraints
+
+    method variant ctxt tname params constraints (_,tags) =
+      let tags, extends =
+	List.fold_left
+          (fun (tags, extends) -> function
+            | Tag (l, None)  -> <:expr< ($str:l$, None) :: $tags$ >>, extends
+            | Tag (l,Some t) ->
+		<:expr< ($str:l$, Some $self#call_expr ctxt t "type_rep"$) ::$tags$ >>,
+		extends
+            | Extends t ->
+		tags,
+		<:expr< $self#call_expr ctxt t "type_rep"$::$extends$ >>)
+          (<:expr< [] >>, <:expr< [] >>) tags in
       wrap <:expr< $uid:runtimename$.TypeRep.mkPolyv $tags$ $extends$ >>
   end
 

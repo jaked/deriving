@@ -43,86 +43,98 @@ module InContext (L : Loc) : Class = struct
   open L
   module Helpers = Base.InContext(L)(Description)
   open Helpers
+  open Description
 
   let wrap formatter =
     [ <:str_item< let format formatter = function $list:formatter$ >> ]
 
-  let in_a_box box e =
-    <:expr< 
-      Format.$lid:box$ formatter 0;
+  let in_a_box box i e =
+    <:expr<
+      Format.$lid:box$ formatter $`int:i$;
       $e$;
       Format.pp_close_box formatter () >>
 
-  let in_hovbox = in_a_box "pp_open_hovbox" and in_box = in_a_box "pp_open_box"
-
+  let in_hovbox ?(indent = 0) = in_a_box "pp_open_hovbox" indent
+  and in_box ?(indent = 0) = in_a_box "pp_open_box" indent
 
   let instance = object (self)
+
     inherit make_module_expr
-    
-    method polycase ctxt : Type.tagspec -> Ast.match_case = function
-      | Tag (name, None) -> 
-          <:match_case< `$uid:name$ -> 
-                        Format.pp_print_string formatter $str:"`" ^ name ^" "$ >>
-      | Tag (name, Some e) ->
-          <:match_case< `$uid:name$ x ->
-                         $in_hovbox <:expr< 
-                            Format.pp_print_string formatter $str:"`" ^ name ^" "$;
-                            $self#call_expr ctxt e "format"$ formatter x >>$ >>
-      | Extends t -> 
-          let patt, guard, cast = cast_pattern ctxt t in
-            <:match_case<
-              $patt$ when $guard$ -> 
-              $in_hovbox <:expr< $self#call_expr ctxt t "format"$ formatter $cast$ >>$ >>
 
-    method nargs ctxt (exprs : (name * Type.expr) list) : Ast.expr =
-      match exprs with
-        | [id,t] -> 
-              <:expr< $self#call_expr ctxt t "format"$ formatter $lid:id$ >>
-        | exprs ->
-            let fmt = 
-              "@[<hov 1>("^ String.concat ",@;" (List.map (fun _ -> "%a") exprs) ^")@]" in
-              List.fold_left
-                (fun f (id, t) ->
-                   <:expr< $f$ $self#call_expr ctxt t "format"$ $lid:id$ >>)
-                <:expr< Format.fprintf formatter $str:fmt$ >>
-                exprs
 
-    method tuple ctxt args = 
+    method nargs ctxt tvars args =
+      match tvars, args with
+      | id::ids, ty::tys ->
+	  let format_expr id ty =
+            <:expr< $self#call_expr ctxt ty "format"$ formatter $lid:id$ >> in
+	  let format_expr' id ty =
+	    <:expr< Format.pp_print_string formatter ",";
+	            Format.pp_print_space formatter ();
+	            $format_expr id ty$>> in
+	  let exprs = format_expr id ty :: List.map2 format_expr' ids tys in
+	  in_hovbox ~indent:1 (seq_list exprs)
+      | _ -> assert false
+
+    method tuple ctxt args =
       let n = List.length args in
       let tvars, tpatt, _ = tuple n in
-      wrap [ <:match_case< $tpatt$ -> $self#nargs ctxt (List.zip tvars args)$ >> ]
+      wrap [ <:match_case< $tpatt$ -> $self#nargs ctxt tvars args$ >> ]
 
-    method case ctxt : Type.summand -> Ast.match_case = 
-      fun (name, args) ->
-        match args with 
-          | [] -> <:match_case< $uid:name$ -> Format.pp_print_string formatter $str:name$ >>
-          | _ -> 
-              let tvars, patt, exp = tuple (List.length args) in
-                <:match_case<
-                  $uid:name$ $patt$ ->
-                  $in_hovbox <:expr<
-                    Format.pp_print_string formatter $str:name$;
-                Format.pp_print_break formatter 1 2;
-                $self#nargs ctxt (List.zip tvars args)$ >>$ >>
-    
-    method field ctxt : Type.field -> Ast.expr = function
-      | (name, ([], t), _) -> <:expr< Format.pp_print_string formatter $str:name ^ " ="$;
-                                      $self#call_expr ctxt t "format"$ formatter $lid:name$ >>
-      | f -> raise (Underivable ("Show cannot be derived for record types with polymorphic fields")) 
 
-    method sum ?eq ctxt decl summands = wrap (List.map (self#case ctxt) summands)
+    method case ctxt (name, args) =
+      match args with
+      | [] ->
+	  <:match_case< $uid:name$ -> Format.pp_print_string formatter $str:name$ >>
+      | _ ->
+          let tvars, patt, exp = tuple (List.length args) in
+	  let format_expr =
+	    <:expr< Format.pp_print_string formatter $str:name$;
+                    Format.pp_print_break formatter 1 2;
+                    $self#nargs ctxt tvars args$ >> in
+          <:match_case< $uid:name$ $patt$ -> $in_hovbox format_expr$ >>
 
-    method record ?eq ctxt decl fields = wrap [ <:match_case<
-      $record_pattern fields$ -> $in_hovbox
-       <:expr<
+    method sum ?eq ctxt tname params constraints summands =
+      wrap (List.map (self#case ctxt) summands)
+
+
+    method field ctxt (name, (vars, ty), mut) =
+      if vars <> [] then
+	raise (Underivable (classname ^ " cannot be derived for record types "
+			    ^ "with polymorphic fields"));
+      <:expr< Format.pp_print_string formatter $str:name ^ " = "$;
+              $self#call_expr ctxt ty "format"$ formatter $lid:name$ >>
+
+    method record ?eq ctxt tname params constraints fields =
+      let format_fields =
+	List.fold_left1
+          (fun l r -> <:expr< $l$; Format.pp_print_string formatter "; "; $r$ >>)
+          (List.map (self#field ctxt) fields) in
+      let format_record =
+	<:expr<
           Format.pp_print_char formatter '{';
-          $List.fold_left1
-            (fun l r -> <:expr< $l$; Format.pp_print_string formatter "; "; $r$ >>)
-            (List.map (self#field ctxt) fields)$;
-          Format.pp_print_char formatter '}'; >>$ >>]
+          $format_fields$;
+          Format.pp_print_char formatter '}'; >> in
+      wrap [ <:match_case< $record_pattern fields$ -> $in_hovbox format_record$ >>]
 
-    method variant ctxt decl (_,tags) = wrap  (List.map (self#polycase ctxt) tags
-                                                        @ [ <:match_case< _ -> assert false >> ])
+    method polycase ctxt : Type.tagspec -> Ast.match_case = function
+      | Tag (name, None) ->
+	  let format_expr =
+	    <:expr< Format.pp_print_string formatter $str:"`" ^ name ^" "$ >> in
+          <:match_case< `$uid:name$ -> $format_expr$ >>
+      | Tag (name, Some e) ->
+	  let format_expr =
+	    <:expr< Format.pp_print_string formatter $str:"`" ^ name ^" "$;
+                    $self#call_expr ctxt e "format"$ formatter x >> in
+          <:match_case< `$uid:name$ x -> $in_hovbox format_expr$ >>
+      | Extends t ->
+          let patt, guard, cast = cast_pattern ctxt t in
+	  let format_expr =
+	    <:expr< $self#call_expr ctxt t "format"$ formatter $cast$ >> in
+          <:match_case< $patt$ when $guard$ -> $in_hovbox format_expr$ >>
+
+    method variant ctxt tname params constraints (_,tags) =
+      wrap (List.map (self#polycase ctxt) tags @ [ <:match_case< _ -> assert false >> ])
+
   end
 
   let make_module_expr = instance#rhs

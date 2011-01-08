@@ -45,59 +45,9 @@ module InContext (L : Loc) : Class = struct
   open Helpers
   open Description
 
-  let bind, seq = 
+  let bind, seq =
     let bindop = ">>=" and seqop = ">>" in
-      <:expr< $lid:bindop$ >>, <:expr< $lid:seqop$ >>
-
-  let unpickle_record_bindings ctxt (tname,params,rhs,cs,_) (fields : field list) e = <:expr<
-      let module Mutable = struct
-        type $Ast.TyDcl (loc, "t", [], Untranslate.repr 
-            (instantiate_modargs_repr ctxt 
-               (Record (List.map (fun (n,p,_) -> (n,p,`Mutable)) fields))), [])$
-      end in $e$ >>
-
-  let unpickle_record ctxt (tname,_,_,_,_ as decl) fields call_expr = 
-    let msg = "unexpected object encountered unpickling "^tname in
-    let assignments = 
-      List.fold_right
-        (fun (id,_,_) exp ->
-           <:expr< this.Mutable.$lid:id$ <- $lid:id$; $exp$ >>)
-        fields
-      <:expr< return self >> in
-    let inner = 
-      List.fold_right
-        (fun (id,([],t),_) exp ->
-           <:expr< $bind$ ($call_expr ctxt t "unpickle"$ $lid:id$)
-             (fun $lid:id$ -> $exp$) >>)
-        fields
-        assignments in
-    let idpat = patt_list (List.map (fun (id,_,_) -> <:patt< $lid:id$ >>) fields) in
-      unpickle_record_bindings ctxt decl fields
-        (<:expr< R.record
-           (fun self -> function
-                  | $idpat$ -> let this = (Obj.magic self : Mutable.t) in $inner$
-                  | _ -> raise ($uid:runtimename$.UnpicklingError $str:msg$)) $`int:List.length fields$ >>)
-
-  let pickle_record ctxt decl fields call_expr =
-    let inner =
-      List.fold_right 
-        (fun (id,([],t),_) e ->
-           <:expr< $bind$ ($call_expr ctxt t "pickle"$ $lid:id$) 
-                          (fun $lid:id$ -> $e$) >>)
-        fields
-        <:expr< (W.store_repr this
-                   ($uid:runtimename$.Repr.make
-                      $expr_list (List.map (fun (id,_,_) -> <:expr< $lid:id$ >>) fields)$)) >>
-    in
-      [ <:match_case< ($record_pattern fields$ as obj) ->
-                       W.allocate obj (fun this -> $inner$) >> ]
-
-
-  let rebind_params ctxt name : Ast.str_item = 
-    NameMap.fold
-      (fun _ param s -> <:str_item< $s$ module $uid:param$ = $uid:param$.$uid:name$ >>)
-      ctxt.argmap
-      <:str_item< >>
+    <:expr< $lid:bindop$ >>, <:expr< $lid:seqop$ >>
 
   let wrap ctxt ~picklers ~unpickler =
     let unpickler = <:expr< let module R = Utils(Typeable) in $unpickler$ >> in
@@ -109,33 +59,33 @@ module InContext (L : Loc) : Class = struct
       <:str_item< open $uid:runtimename$.Read >>;
       <:str_item< let unpickle = $unpickler$ >> ]
 
-    let instance = object (self)
+  let instance = object (self)
+
     inherit make_module_expr
 
-    method tuple ctxt ts = 
-      let nts = List.length ts in
-      let ids = (List.mapn (fun t n -> (Printf.sprintf "id%d" n, t)) ts) in
-      let eidlist = expr_list (List.map (fun (id,_) -> <:expr< $lid:id$ >>) ids) in
-      let pidlist = patt_list (List.map (fun (id,_) -> <:patt< $lid:id$ >>) ids) in
-      let _, tpatt,texpr = tuple ~param:"id" nts in
+    method tuple ctxt tys =
+      let ntys = List.length tys in
+      let ids, tpatt,texpr = tuple ~param:"id" ntys in
       let picklers =
-        let inner = 
-          List.fold_right
-            (fun (id,t) expr -> 
-               <:expr< $bind$ ($self#call_expr ctxt t "pickle"$ $lid:id$) 
-                            (fun $lid:id$ -> $expr$) >>)
-            ids
+	let eidlist = expr_list (List.map (fun id -> <:expr< $lid:id$ >>) ids) in
+        let inner =
+          List.fold_right2
+            (fun id ty expr ->
+               <:expr< $bind$ ($self#call_expr ctxt ty "pickle"$ $lid:id$)
+                              (fun $lid:id$ -> $expr$) >>)
+            ids tys
             <:expr< W.store_repr this ($uid:runtimename$.Repr.make $eidlist$) >> in
-          [ <:match_case< ($tpatt$ as obj) -> 
-                  W.allocate obj (fun this -> $inner$) >>]
-
-      and unpickler = 
-        let msg = "unexpected object encountered unpickling "^string_of_int nts^"-tuple" in
-        let inner = 
-          List.fold_right 
-            (fun (id,t) expr ->
-               <:expr< $bind$ ($self#call_expr ctxt t "unpickle"$ $lid:id$) (fun $lid:id$ -> $expr$) >>)
-            ids
+        [ <:match_case< ($tpatt$ as obj) -> W.allocate obj (fun this -> $inner$) >>]
+      and unpickler =
+        let msg = "unexpected object encountered unpickling "
+	          ^ string_of_int ntys ^ "-tuple" in
+	let pidlist = patt_list (List.map (fun id -> <:patt< $lid:id$ >>) ids) in
+        let inner =
+          List.fold_right2
+            (fun id ty expr ->
+               <:expr< $bind$ ($self#call_expr ctxt ty "unpickle"$ $lid:id$)
+		              (fun $lid:id$ -> $expr$) >>)
+            ids tys
             <:expr< return $texpr$ >> in
           <:expr< R.tuple
             (function
@@ -143,108 +93,167 @@ module InContext (L : Loc) : Class = struct
                | _ -> raise ($uid:runtimename$.UnpicklingError $str:msg$)) >> in
         wrap ctxt ~picklers ~unpickler
 
-    method polycase ctxt tagspec : Ast.match_case = match tagspec with
+
+    method case_pickle ctxt (name, params') n =
+      let nparams = List.length params' in
+      let ids = List.mapn (fun _ n -> Printf.sprintf "id%d" n) params' in
+      let svalue = expr_list (List.map (fun id -> <:expr< $lid:id$>>) ids) in
+      let repr =
+	<:expr< $uid:runtimename$.Repr.make ~constructor:$`int:n$ $svalue$ >> in
+      let expr = <:expr< W.store_repr thisid $repr$ >> in
+      match params' with
+      | [] ->
+	  <:match_case< $uid:name$ as obj -> W.allocate obj (fun thisid -> $expr$) >>
+      | _  ->
+	  let vs, tpatt, _ = tuple ~param:"v" nparams in
+	  let bind_param p (id, v) expr =
+	    <:expr< $bind$ ($self#call_expr ctxt p "pickle"$ $lid:v$)
+              (fun $lid:id$ -> $expr$)>> in
+          let expr = List.fold_right2 bind_param params' (List.zip ids vs) expr in
+	  <:match_case< $uid:name$ $tpatt$ as obj ->
+                        W.allocate obj (fun thisid -> $expr$) >>
+
+    method case_unpickle ctxt (name, params') n =
+      match params' with
+      | [] -> <:match_case< $`int:n$, [] -> return $uid:name$ >>
+      | _ ->
+	  let nparams = List.length params' in
+	  let ids, _, texpr = tuple ~param:"id" nparams in
+	  let ms = List.mapn (fun _ n -> Printf.sprintf "M%d" n) params' in
+	  let bind_param t (id, m) (pat, exp) =
+              <:patt< $lid:id$ :: $pat$ >>,
+              <:expr< let module $uid:m$ = $self#expr ctxt t$ in
+                      $bind$ ($uid:m$.unpickle $lid:id$)
+		             (fun $lid:id$ -> $exp$) >> in
+	    let patt, expr =
+	      List.fold_right2 bind_param params' (List.zip ids ms)
+		(<:patt< [] >>, <:expr< return ($uid:name$ $texpr$) >>) in
+	    <:match_case< $`int:n$, $patt$ -> $expr$ >>
+
+    method sum ?eq ctxt tname params constraints summands =
+      let picklers = List.mapn (self#case_pickle ctxt) summands in
+      let unpickler = <:expr<
+	fun id ->
+          let f = function
+	      $list:List.mapn (self#case_unpickle ctxt) summands$
+              | n,_ -> raise ($uid:runtimename$.UnpicklingError
+				($str:"Unexpected tag when unpickling " ^ tname ^ ": "$
+				 ^ string_of_int n)) in
+          R.sum f id >> in
+      wrap ctxt ~picklers ~unpickler
+
+
+    method record_pickler ctxt fields =
+      let ids = List.map (fun (id,_,_) -> <:expr< $lid:id$ >>) fields in
+      let expr =
+	<:expr< (W.store_repr this ($uid:runtimename$.Repr.make $expr_list ids$)) >> in
+      let bind_field (id,(vars,t),_) e =
+	if vars <> [] then
+	  raise (Underivable (classname ^ " cannot be derived for record types "
+			      ^ "with polymorphic fields"));
+        <:expr< $bind$ ($self#call_expr ctxt t "pickle"$ $lid:id$)
+                       (fun $lid:id$ -> $e$) >> in
+      let inner = List.fold_right bind_field fields expr in
+      <:match_case<
+	  ($record_pattern fields$ as obj) -> W.allocate obj (fun this -> $inner$) >>
+
+
+    method record_unpickle ctxt tname fields =
+      let msg = "unexpected object encountered unpickling " ^ tname in
+      let assignments =
+	List.fold_right
+          (fun (id,_,_) exp ->
+            <:expr< this.Mutable.$lid:id$ <- $lid:id$; $exp$ >>)
+          fields
+	  <:expr< return self >> in
+      let bind_field (id,(vars,t),_) exp =
+	assert (vars = []);
+	<:expr< $bind$ ($self#call_expr ctxt t "unpickle"$ $lid:id$)
+                       (fun $lid:id$ -> $exp$) >> in
+      let inner = List.fold_right bind_field fields assignments in
+      let idpat = patt_list (List.map (fun (id,_,_) -> <:patt< $lid:id$ >>) fields) in
+      let record =
+	<:expr< R.record
+          (fun self -> function
+            | $idpat$ -> let this = (Obj.magic self : Mutable.t) in $inner$
+            | _ -> raise ($uid:runtimename$.UnpicklingError $str:msg$))
+	  $`int:List.length fields$ >> in
+      let mutable_type =
+	instantiate_modargs_repr ctxt
+	  (Record (List.map (fun (n,p,_) -> (n,p,`Mutable)) fields)) in
+      <:expr< let module Mutable = struct
+                type $Ast.TyDcl (loc, "t", [], Untranslate.repr mutable_type, [])$
+              end in $record$ >>
+
+    method record ?eq ctxt tname params constraints (fields : Type.field list) =
+      wrap ctxt
+        ~picklers:[self#record_pickler ctxt fields]
+        ~unpickler:(self#record_unpickle ctxt tname fields)
+
+
+    method polycase_pickle ctxt = function
     | Tag (name, None) -> <:match_case<
         (`$name$ as obj) ->
           W.allocate obj
-              (fun thisid -> 
+              (fun thisid ->
                  W.store_repr thisid
-                    ($uid:runtimename$.Repr.make ~constructor:$`int:(tag_hash name)$ [])) >>
-    | Tag (name, Some t) -> <:match_case< 
+                    ($uid:runtimename$.Repr.make ~constructor:$`int:tag_hash name$ [])) >>
+    | Tag (name, Some t) -> <:match_case<
         (`$name$ v1 as obj) ->
            W.allocate obj
             (fun thisid ->
              $bind$ ($self#call_expr ctxt t "pickle"$ v1)
-                    (fun mid -> 
+                    (fun mid ->
                     (W.store_repr thisid
-                        ($uid:runtimename$.Repr.make ~constructor:$`int:(tag_hash name)$ [mid])))) >>
-    | Extends t -> 
-        let patt, guard, cast = cast_pattern ctxt t in <:match_case<
-         ($patt$ as obj) when $guard$ ->
+                        ($uid:runtimename$.Repr.make ~constructor:$`int:tag_hash name$ [mid])))) >>
+    | Extends t ->
+        let patt, guard, cast = cast_pattern ctxt t in
+	<:match_case<
+            ($patt$ as obj) when $guard$ ->
             ($self#call_expr ctxt t "pickle"$ $cast$) >>
 
-    method polycase_un ctxt tagspec : Ast.match_case = match tagspec with
-    | (name, None)   -> <:match_case< $`int:(tag_hash name)$, [] -> return `$name$ >>
-    | (name, Some t) -> <:match_case< $`int:(tag_hash name)$, [x] -> 
-      $bind$ ($self#call_expr ctxt t "unpickle"$ x) (fun o -> return (`$name$ o)) >>
+    method polycase_unpickler ctxt tname tags =
+      let do_tag = function
+      | (name, None)   ->
+	  <:match_case< $`int:(tag_hash name)$, [] -> return `$name$ >>
+      | (name, Some t) ->
+	  <:match_case< $`int:(tag_hash name)$, [x] ->
+	                $bind$ ($self#call_expr ctxt t "unpickle"$ x)
+	                       (fun o -> return (`$name$ o)) >> in
+      let do_extensions tys =
+	(* Try each extension in turn.  If we get an UnknownTag failure,
+           try the next one.  This is
 
-    method extension ctxt tname ts : Ast.match_case =
-      (* Try each extension in turn.  If we get an UnknownTag failure,
-         try the next one.  This is
+           * safe because any two extensions that define the same tag
+             must be compatible at that point
 
-         * safe because any two extensions that define the same tag
-           must be compatible at that point
+           * fast because we can tell on the first integer comparison
+             whether we've picked the right path or not.
 
-         * fast because we can tell on the first integer comparison
-           whether we've picked the right path or not.
-      *)
-      let inner = List.fold_right 
-        (fun t exp -> <:expr<
-           let module M = $(self#expr ctxt t)$ in
-             try $exp$
-             with $uid:runtimename$.UnknownTag (n,_) -> (M.unpickle id :> a $uid:runtimename$.Read.m) >>)
-        ts
-        <:expr< raise ($uid:runtimename$.UnknownTag (n, ($str:"Unexpected tag encountered during unpickling of "
-                                       ^tname$))) >>
-    in <:match_case< n,_ -> $inner$ >>
-
-    method variant ctxt (tname,_,_,_,_ as decl) (_, tags) = 
-      let unpickler = 
-        let tags, extensions = either_partition
+	 *)
+	let fail =
+          <:expr< raise ($uid:runtimename$.UnknownTag
+			   (n, ($str:"Unexpected tag encountered during unpickling of "
+                                     ^ tname$))) >> in
+	let try_extension ty expr =
+	  <:expr<
+              let module M = $(self#expr ctxt ty)$ in
+              try $expr$
+              with $uid:runtimename$.UnknownTag (n,_) ->
+		(M.unpickle id :> a $uid:runtimename$.Read.m) >> in
+        <:match_case< n,_ -> $List.fold_right try_extension tys fail$ >> in
+      let tags, extensions = either_partition
           (function Tag (name,t) -> Left (name,t) | Extends t -> Right t) tags in
-        let tag_cases = List.map (self#polycase_un ctxt) tags in
-        let extension_case = self#extension ctxt tname extensions in
-          <:expr< fun id -> R.sum (function $list:tag_cases @ [extension_case]$) id >>
-      in
-        wrap ctxt ~picklers:(List.map (self#polycase ctxt) tags) ~unpickler
+      let tag_cases = List.map do_tag tags in
+      let extension_case = do_extensions extensions in
+      <:expr< fun id -> R.sum (function $list:tag_cases @ [extension_case]$) id >>
 
-    method case ctors ctxt (name, params') n : Ast.match_case * Ast.match_case = 
-    let nparams = List.length params' in
-    let ids = List.map (fun n ->  <:expr< $lid:Printf.sprintf "id%d" n$ >>) (List.range 0 nparams) in
-    let exp = 
-      List.fold_right2
-        (fun p n tail -> 
-           <:expr< $bind$ ($self#call_expr ctxt p "pickle"$ $lid:Printf.sprintf "v%d" n$)
-                          (fun $lid:Printf.sprintf "id%d" n$ -> $tail$)>>)
-        params'
-        (List.range 0 nparams)
-        <:expr< W.store_repr thisid ($uid:runtimename$.Repr.make ~constructor:$`int:n$ $expr_list ids$) >> in
-      match params' with
-        | [] -> <:match_case< $uid:name$ as obj -> 
-                              W.allocate obj (fun thisid -> $exp$) >>,
-                <:match_case< $`int:n$, [] -> return $uid:name$ >>
-        | _  -> let _, tpatt, _ = tuple ~param:"v" nparams in
-	        <:match_case< $uid:name$ $tpatt$ as obj -> 
-                              W.allocate obj (fun thisid -> $exp$) >>,
-    let _, _, tuple = tuple ~param:"id" nparams in
-    let patt, exp = 
-      List.fold_right2 
-        (fun n t (pat, exp) ->
-           let m = Printf.sprintf "M%d" n and id = Printf.sprintf "id%d" n in
-           <:patt< $lid:id$ :: $pat$ >>,
-           <:expr< let module $uid:m$ = $self#expr ctxt t$
-                    in $bind$ ($uid:m$.unpickle $lid:id$) (fun $lid:id$ -> $exp$) >>)
-        (List.range 0 nparams)
-        params'
-      (<:patt< [] >>, <:expr< return ($uid:name$ $tuple$) >>) in
-      <:match_case< $`int:n$, $patt$ -> $exp$ >>
-
-  method sum ?eq ctxt (tname,_,_,_,_ as decl) summands =
-    let nctors = List.length summands in
-    let picklers, unpicklers = List.split (List.mapn (self#case nctors ctxt) summands) in
-    wrap ctxt
-      ~picklers
-      ~unpickler:<:expr< fun id -> 
-        let f = function $list:unpicklers$ 
-                 | n,_ -> raise ($uid:runtimename$.UnpicklingError ($str:"Unexpected tag when unpickling "
-                                                  ^tname^": "$^ string_of_int n))
-        in R.sum f id >>
-
-  method record ?eq ctxt (tname,_,_,_,_ as decl) (fields : Type.field list) = 
+    method variant ctxt tname params constraints (_, tags) =
       wrap ctxt
-        ~picklers:(pickle_record ctxt decl fields self#call_expr)
-        ~unpickler:(unpickle_record ctxt decl fields self#call_expr)
-  end
+	~picklers:(List.map (self#polycase_pickle ctxt) tags)
+	~unpickler:(self#polycase_unpickler ctxt tname tags)
+
+end
 
   let make_module_expr = instance#rhs
   let generate = default_generate ~make_module_expr ~make_module_type

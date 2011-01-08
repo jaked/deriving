@@ -37,10 +37,10 @@ module InContext (L : Loc) : Class = struct
   let instance = object(self)
     inherit make_module_expr
 
-    method sum ?eq ctxt (tname,_,_,_,_) summands =
-    let numbering = 
+    method sum ?eq ctxt tname params constraints summands =
+    let numbering =
       List.fold_right2
-        (fun n ctor rest -> 
+        (fun n ctor rest ->
            match ctor with
              | (name, []) -> <:expr< ($uid:name$, $`int:n$) :: $rest$ >>
              | (name,_) -> raise (Underivable ("Enum cannot be derived for the type "^
@@ -51,10 +51,10 @@ module InContext (L : Loc) : Class = struct
         <:expr< [] >> in
     wrap numbering
 
-    method variant ctxt decl (_, tags) = 
-    let numbering = 
+    method variant ctxt tname params constraints (_, tags) =
+    let numbering =
       List.fold_right2
-        (fun n tagspec rest -> 
+        (fun n tagspec rest ->
            match tagspec with
              | Tag (name, None) -> <:expr< (`$name$, $`int:n$) :: $rest$ >>
              | Tag (name, _) -> raise (Underivable ("Enum cannot be derived because the tag "^
@@ -66,10 +66,12 @@ module InContext (L : Loc) : Class = struct
         <:expr< [] >> in
     wrap numbering
 
-    method tuple context _ = raise (Underivable "Enum cannot be derived for tuple types")
-    method record ?eq _ (tname,_,_,_,_) = raise (Underivable
-                                                 ("Enum cannot be derived for record types (i.e. "^
-                                                    tname^")"))
+    method tuple context _ =
+      raise (Underivable "Enum cannot be derived for tuple types")
+
+    method record ?eq _ tname params constraints =
+      raise (Underivable ("Enum cannot be derived for record types (i.e. "^tname^")"))
+
   end
 
   let make_module_expr = instance#rhs

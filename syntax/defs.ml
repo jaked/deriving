@@ -53,11 +53,17 @@ class type virtual generator = object
 
       method virtual sum:
 	  ?eq:Type.expr -> context ->
-	    Type.decl -> Type.summand list -> Ast.str_item list
+	    Type.name -> Type.param list -> Type.constraint_ list ->
+	      Type.summand list -> Ast.str_item list
       method virtual tuple: context -> Type.expr list -> Ast.str_item list
-      method virtual variant: context -> Type.decl -> Type.variant -> Ast.str_item list
+      method virtual variant:
+	  context ->
+	    Type.name -> Type.param list -> Type.constraint_ list ->
+	      Type.variant -> Ast.str_item list
       method virtual record:
-	  ?eq:Type.expr -> context -> Type.decl -> Type.field list -> Ast.str_item list
+	  ?eq:Type.expr -> context ->
+	    Type.name -> Type.param list -> Type.constraint_ list ->
+	      Type.field list -> Ast.str_item list
 
       method class_: context -> [ `NYI ] -> Ast.str_item list
       method function_: context -> Type.expr * Type.expr -> Ast.str_item list

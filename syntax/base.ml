@@ -203,10 +203,19 @@ struct
     method mapply ctxt (funct : Ast.module_expr) args =
       apply_functor funct (List.map (self#expr ctxt) args)
 
-    method virtual variant : context -> decl -> variant -> Ast.str_item list
-    method virtual sum     : ?eq:expr -> context -> decl -> summand list -> Ast.str_item list
-    method virtual record  : ?eq:expr -> context -> decl -> field list -> Ast.str_item list
-    method virtual tuple   : context -> expr list -> Ast.str_item list
+    method virtual variant:
+	context ->
+	  Type.name -> Type.param list -> Type.constraint_ list ->
+	    variant -> Ast.str_item list
+    method virtual sum:
+	?eq:expr -> context ->
+	  Type.name -> Type.param list -> Type.constraint_ list ->
+	    summand list -> Ast.str_item list
+    method virtual record:
+	?eq:expr -> context ->
+	  Type.name -> Type.param list -> Type.constraint_ list ->
+	    field list -> Ast.str_item list
+    method virtual tuple: context -> expr list -> Ast.str_item list
 
     method param ctxt (name, _) =
       match ctxt.toplevel with
@@ -253,17 +262,17 @@ struct
       | `Constr c   ->                   (self#constr     ctxt c)
       | `Tuple t    -> self#wrap ctxt ty (self#tuple      ctxt t)
 
-    method rhs ctxt (tname, params, rhs, constraints, _ as decl : Type.decl) : Ast.module_expr = 
+    method rhs ctxt (tname, params, rhs, constraints, _) : Ast.module_expr =
       let ty = `Constr([tname], List.map (fun p -> `Param p) params) in
       match rhs with
         | `Fresh (_, _, (`Private : [`Private|`Public])) when not allow_private ->
             raise (Underivable ("The class "^ classname ^" cannot be derived for private types"))
         | `Fresh (eq, Sum summands, _) ->
-	    self#wrap ctxt ty (self#sum ?eq ctxt decl summands)
+	    self#wrap ctxt ty (self#sum ?eq ctxt tname params constraints summands)
         | `Fresh (eq, Record fields, _) ->
-	    self#wrap ctxt ty (self#record ?eq ctxt decl fields)
+	    self#wrap ctxt ty (self#record ?eq ctxt tname params constraints fields)
         | `Expr e -> self#expr ctxt e
-        | `Variant v -> self#wrap ctxt ty (self#variant ctxt decl v)
+        | `Variant v -> self#wrap ctxt ty (self#variant ctxt tname params constraints v)
         | `Nothing -> <:module_expr< >>
 
     method call_expr ctxt ty name = mproject (self#expr ctxt ty) name
