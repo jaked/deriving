@@ -209,7 +209,7 @@ module InContext (L : Loc) : Class = struct
     | Extends t ->
         let patt, guard, cast = cast_pattern ctxt t in
 	<:match_case<
-            ($patt$ as obj) when $guard$ ->
+            ($patt$) when $guard$ ->
             ($self#call_expr ctxt t "pickle"$ $cast$) >>
 
     method polycase_unpickler ctxt tname tags =
@@ -239,7 +239,7 @@ module InContext (L : Loc) : Class = struct
 	  <:expr<
               let module M = $(self#expr ctxt ty)$ in
               try $expr$
-              with $uid:runtimename$.UnknownTag (n,_) ->
+              with $uid:runtimename$.UnknownTag _ ->
 		(M.unpickle id :> a $uid:runtimename$.Read.m) >> in
         <:match_case< n,_ -> $List.fold_right try_extension tys fail$ >> in
       let tags, extensions = either_partition
@@ -249,8 +249,9 @@ module InContext (L : Loc) : Class = struct
       <:expr< fun id -> R.sum (function $list:tag_cases @ [extension_case]$) id >>
 
     method variant ctxt tname params constraints (_, tags) =
+      let wildcard = <:match_case< _ -> assert false >> in
       wrap ctxt
-	~picklers:(List.map (self#polycase_pickle ctxt) tags)
+	~picklers:(List.map (self#polycase_pickle ctxt) tags @ [ wildcard ])
 	~unpickler:(self#polycase_unpickler ctxt tname tags)
 
 end
