@@ -44,4 +44,6 @@ module Typeable_float  : Typeable with type a = float
 module Typeable_bool   : Typeable with type a = bool
 module Typeable_string : Typeable with type a = string
 module Typeable_char   : Typeable with type a = char
-
+module Typeable_int32     : Typeable with type a = int32
+module Typeable_int64     : Typeable with type a = int64
+module Typeable_nativeint : Typeable with type a = nativeint

@@ -411,6 +411,9 @@ module Pickle_char = Pickle_from_dump(Dump_char)(Eq_char)(Typeable_char)
 module Pickle_float = Pickle_from_dump(Dump_float)(Eq_float)(Typeable_float)
 module Pickle_num = Pickle_from_dump(Dump_num)(Eq_num)(Typeable_num)
 module Pickle_string = Pickle_from_dump(Dump_string)(Eq_string)(Typeable_string)
+module Pickle_int32 = Pickle_from_dump(Dump_int32)(Eq_int32)(Typeable_int32)
+module Pickle_int64 = Pickle_from_dump(Dump_int64)(Eq_int64)(Typeable_int64)
+module Pickle_nativeint = Pickle_from_dump(Dump_nativeint)(Eq_nativeint)(Typeable_nativeint)
 
 module Pickle_option (V0 : Pickle) : Pickle with type a = V0.a option = Defaults(
   struct

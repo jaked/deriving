@@ -24,6 +24,9 @@ let r1 =
     assert (not (Eq_r1.eq
                    { r1_l1 = 20; r1_l2 = 10 }
                    { r1_l1 = 10; r1_l2 = 20 }));
+    assert (not (Eq_r1.eq
+                   { r1_l1 = 20; r1_l2 = 10 }
+                   { r1_l1 = 20; r1_l2 = 20 }));
   end
 
 let r2 =
@@ -238,4 +241,33 @@ let t =
     assert (not (Eq_t.eq 14 0));
     assert (not (Eq_t.eq 0 14));
     assert (not (Eq_t.eq (-1) 0));
+  end
+
+let ii =
+  begin
+    assert (Eq_ii.eq
+	      {int32 = 0l ; int64 = 1L ; nativeint = 2n; }
+	      {int32 = 0l ; int64 = 1L ; nativeint = 2n; });
+    assert (not (Eq_ii.eq
+	      {int32 = 0l ; int64 = 1L ; nativeint = 2n; }
+	      {int32 = 1l ; int64 = 1L ; nativeint = 2n; }));
+    assert (not (Eq_ii.eq
+	      {int32 = 0l ; int64 = 1L ; nativeint = 2n; }
+	      {int32 = 0l ; int64 = 2L ; nativeint = 2n; }));
+    assert (not (Eq_ii.eq
+	      {int32 = 0l ; int64 = 1L ; nativeint = 2n; }
+	      {int32 = 0l ; int64 = 1L ; nativeint = 3n; }));
+  end
+
+let ii' =
+  begin
+    assert (Eq_ii'.eq
+	      {int32' = 0l ; int64' = 1L ; }
+	      {int32' = 0l ; int64' = 1L ; });
+    assert (not (Eq_ii'.eq
+	      {int32' = 0l ; int64' = 1L ; }
+	      {int32' = 1l ; int64' = 1L ; }));
+    assert (not (Eq_ii'.eq
+	      {int32' = 0l ; int64' = 1L ; }
+	      {int32' = 0l ; int64' = 2L ; }));
   end

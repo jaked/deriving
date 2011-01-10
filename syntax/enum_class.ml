@@ -66,7 +66,7 @@ module InContext (L : Loc) : Class = struct
         <:expr< [] >> in
     wrap numbering
 
-    method tuple context _ =
+    method tuple context tys =
       raise (Underivable "Enum cannot be derived for tuple types")
 
     method record ?eq _ tname params constraints =

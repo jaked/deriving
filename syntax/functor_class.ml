@@ -30,32 +30,31 @@ struct
 
   module Helpers = Base.InContext(C)(Description)
   open Helpers
-
   open Description
 
-  let param_map : string NameMap.t = 
+  let param_map : string NameMap.t =
     List.fold_right
       (fun (name,_) map -> NameMap.add name ("f_" ^ name) map)
       context.params
       NameMap.empty
 
-  let tdec, sigdec = 
-    let dec name = 
-      ("f", context.params, 
+  let tdec, sigdec =
+    let dec name =
+      ("f", context.params,
        `Expr (`Constr ([name], List.map (fun p -> `Param p) context.params)), [], false)
     in
       (fun name -> Untranslate.decl (dec name)),
       (fun name -> Untranslate.sigdecl (dec name))
 
-  let wrapper name expr = 
-    let patts :Ast.patt list = 
-      List.map 
+  let wrapper name expr =
+    let patts :Ast.patt list =
+      List.map
         (fun (name,_) -> <:patt< $lid:NameMap.find name param_map$ >>)
         context.params in
-    let rhs = 
+    let rhs =
       List.fold_right (fun p e -> <:expr< fun $p$ -> $e$ >>) patts expr in
       <:module_expr< struct
-        type $tdec name$ 
+        type $tdec name$
         let map = $rhs$
       end >>
 (*
@@ -66,9 +65,9 @@ struct
 
    [[C1|...CN]] = function [[C1]] ... [[CN]]               sum
    [[`C1|...`CN]] = function [[`C1]] ... [[`CN]]           variant
- 
+
    [[{t1,...tn}]] = fun (t1,tn) -> ([[t1]],[[tn]])         tuple
-   [[{l1:t1; ... ln:tn}]] = 
+   [[{l1:t1; ... ln:tn}]] =
          fun {l1=t1;...ln=tn} -> {l1=[[t1]];...ln=[[tn]]}  record
 
    [[(t1,...tn) c]] = c_map [[t1]]...[[tn]]                constructor

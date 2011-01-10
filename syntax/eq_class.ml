@@ -17,11 +17,11 @@ module Description : ClassDescription = struct
     ["bool"], "bool";
     ["char"], "char";
     ["int"], "int";
-    (* ["int32"], "int32"; *)
-    (* ["Int32";"t"], "int32"; *)
-    (* ["int64"], "int64"; *)
-    (* ["Int64";"t"], "int64"; *)
-    (* ["nativeint"], "nativeint"; *)
+    ["int32"], "int32";
+    ["Int32";"t"], "int32";
+    ["int64"], "int64";
+    ["Int64";"t"], "int64";
+    ["nativeint"], "nativeint";
     ["float"], "float";
     ["num"], "num";
     ["list"], "list";

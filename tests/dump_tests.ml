@@ -149,3 +149,17 @@ let t = begin
     assert (T.test max_int);
     assert (T.test 10);
 end
+
+let ii =
+  begin
+    let module T = Test (Dump_ii) in
+    assert (T.test
+	      {int32 = 1073741824l ; int64 = 10737418230L ; nativeint = 2n; });
+  end
+
+let iii =
+  begin
+    let module T = Test (Dump_ii') in
+    assert (T.test
+	      {int32' = 1073741824l ; int64' = 10737418230L ; });
+  end

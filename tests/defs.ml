@@ -157,3 +157,16 @@ end
 (* Reusing existing instances *)
 type t = int 
     deriving (Eq, Enum, Bounded, Dump, Show, Typeable, Pickle, Functor)
+
+(* Int32, etc. *)
+
+type ii = {
+    int32: int32;
+    int64: int64;
+    nativeint: nativeint;
+  } deriving (Eq, Dump, Typeable, Pickle, Show)
+
+type ii' = {
+    int32': Int32.t;
+    int64': Int64.t;
+  } deriving (Eq, Dump, Typeable, Pickle, Show)

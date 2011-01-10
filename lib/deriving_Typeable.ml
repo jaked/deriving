@@ -229,6 +229,9 @@ module Typeable_float  = Primitive_typeable(struct type t = float let magic = "P
 module Typeable_bool   = Primitive_typeable(struct type t = bool let magic = "Primitive.bool" end)
 module Typeable_string = Primitive_typeable(struct type t = string let magic = "Primitive.string" end)
 module Typeable_char   = Primitive_typeable(struct type t = char let magic = "Primitive.char" end)
+module Typeable_int32  = Primitive_typeable(struct type t = int32 let magic = "Primitive.int32" end)
+module Typeable_int64  = Primitive_typeable(struct type t = int64 let magic = "Primitive.int64" end)
+module Typeable_nativeint = Primitive_typeable(struct type t = nativeint let magic = "Primitive.nativeint" end)
 
 module Typeable_ref(A : Typeable) : Typeable with type a = A.a ref =
   Defaults(struct type a = A.a ref
