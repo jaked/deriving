@@ -21,7 +21,7 @@ module Description : ClassDescription = struct
   let depends = []
 end
 
-module InContext (C : sig val context : Defs.context val loc : Camlp4.PreCast.Loc.t end) =
+module InContext (C : sig val loc : Camlp4.PreCast.Loc.t end) =
 struct
   open C
   open Type
@@ -32,21 +32,22 @@ struct
   open Helpers
   open Description
 
-  let param_map : string NameMap.t =
+  let param_map context : string NameMap.t =
     List.fold_right
       (fun (name,_) map -> NameMap.add name ("f_" ^ name) map)
       context.params
       NameMap.empty
 
   let tdec, sigdec =
-    let dec name =
+    let dec context name =
       ("f", context.params,
        `Expr (`Constr ([name], List.map (fun p -> `Param p) context.params)), [], false)
     in
-      (fun name -> Untranslate.decl (dec name)),
-      (fun name -> Untranslate.sigdecl (dec name))
+      (fun context name -> Untranslate.decl (dec context name)),
+      (fun context name -> Untranslate.sigdecl (dec context name))
 
-  let wrapper name expr =
+  let wrapper context name expr =
+    let param_map = param_map context in
     let patts :Ast.patt list =
       List.map
         (fun (name,_) -> <:patt< $lid:NameMap.find name param_map$ >>)
@@ -54,7 +55,7 @@ struct
     let rhs =
       List.fold_right (fun p e -> <:expr< fun $p$ -> $e$ >>) patts expr in
       <:module_expr< struct
-        type $tdec name$
+        type $tdec context name$
         let map = $rhs$
       end >>
 (*
@@ -79,68 +80,69 @@ struct
    [[`C0]]   = `C0->`C0                                    nullary tag
    [[`C1 t]] = `C1 t->`C0 [[t]] t                          unary tag
 *)
-  let rec polycase = function
+  let rec polycase context = function
     | Tag (name, None) -> <:match_case< `$name$ -> `$name$ >>
-    | Tag (name, Some e) -> <:match_case< `$name$ x -> `$name$ ($expr e$ x) >>
+    | Tag (name, Some e) -> <:match_case< `$name$ x -> `$name$ ($expr context e$ x) >>
     | Extends t -> 
-        let patt, guard, exp = cast_pattern context t in
-          <:match_case< $patt$ when $guard$ -> $expr t$ $exp$ >>
+        let patt, guard, exp = cast_pattern context.argmap t in
+          <:match_case< $patt$ when $guard$ -> $expr context t$ $exp$ >>
 
-  and expr : Type.expr -> Ast.expr = function
+  and expr context : Type.expr -> Ast.expr = function
     | t when not (contains_tvars t) -> <:expr< fun x -> x >>
-    | `Param (p,_) -> <:expr< $lid:NameMap.find p param_map$ >>
+    | `Param (p,_) -> <:expr< $lid:NameMap.find p (param_map context)$ >>
     | `Function (f,t) when not (contains_tvars t) -> 
-        <:expr< fun f x -> f ($expr f$ x) >>
+        <:expr< fun f x -> f ($expr context f$ x) >>
     | `Constr (qname, ts) ->
 	let qname =
 	  try [runtimename ; List.assoc qname predefs]
 	  with Not_found -> qname in
         List.fold_left 
-          (fun fn arg -> <:expr< $fn$ $expr arg$ >>)
+          (fun fn arg -> <:expr< $fn$ $expr context arg$ >>)
           <:expr< $id:modname_from_qname ~qname ~classname$.map >>
           ts
-    | `Tuple ts -> tup ts
+    | `Tuple ts -> tup context ts
     | _ -> raise (Underivable "Functor cannot be derived for this type")
 
-  and tup = function
-    | [t] -> expr t
+  and tup context = function
+    | [t] -> expr context t
     | ts ->
         let args, exps = 
           (List.fold_right2
              (fun t n (p,e) -> 
                 let v = Printf.sprintf "t%d" n in
                   Ast.PaCom (loc, <:patt< $lid:v$ >>, p),
-                  Ast.ExCom (loc, <:expr< $expr t$ $lid:v$ >>, e))
+                  Ast.ExCom (loc, <:expr< $expr context t$ $lid:v$ >>, e))
              ts
              (List.range 0 (List.length ts))
              (<:patt< >>, <:expr< >>)) in
         let pat, exp = Ast.PaTup (loc, args), Ast.ExTup (loc, exps) in
           <:expr< fun $pat$ -> $exp$ >>
 
-  and case = function
+  and case context = function
     | (name, []) -> <:match_case< $uid:name$ -> $uid:name$ >>
     | (name, args) -> 
-        let f = tup args 
+        let f = tup context args 
         and _, tpatt, texp = tuple (List.length args) in
           <:match_case< $uid:name$ $tpatt$ -> let $tpatt$ = ($f$ $texp$) in $uid:name$ ($texp$) >>
 
-  and field (name, (_,t), _) : Ast.expr =
-    <:expr< $expr t$ $lid:name$ >>
+  and field context (name, (_,t), _) : Ast.expr =
+    <:expr< $expr context t$ $lid:name$ >>
 
-  let rhs = function
+  let rhs context = function
     |`Fresh (_, _, `Private) -> raise (Underivable "Functor cannot be derived for private types")
     |`Fresh (_, Sum summands, _)  -> 
-       <:expr<  function $list:List.map case summands$ >>
+       <:expr<  function $list:List.map (case context) summands$ >>
     |`Fresh (_, Record fields, _) -> 
        <:expr< fun $record_pattern fields$ -> 
-                   $record_expr (List.map (fun ((l,_,_) as f) -> (l,field f)) fields)$ >>
-    |`Expr e                  -> expr e
+                   $record_expr (List.map (fun ((l,_,_) as f) -> (l,field context f)) fields)$ >>
+    |`Expr e                  -> expr context e
     |`Variant (_, tags) -> 
-       <:expr< function $list:List.map polycase tags$ | _ -> assert false >>
+       <:expr< function $list:List.map (polycase context) tags$ | _ -> assert false >>
     | `Nothing -> raise (Underivable "Cannot generate functor instance for the empty type")
 
 
-  let maptype name = 
+  let maptype context name =
+    let param_map = param_map context in
     let ctor_in = `Constr ([name], List.map (fun p -> `Param p) context.params) in
     let ctor_out = substitute param_map ctor_in  (* c[f_i/a_i] *) in
       List.fold_right (* (a_i -> f_i) -> ... -> c[a_i] -> c[f_i/a_i] *)
@@ -149,21 +151,21 @@ struct
         context.params
         (Untranslate.expr (`Function (ctor_in, ctor_out)))
 
-   let signature name : Ast.sig_item list =  
-     [ <:sig_item< type $list:sigdec name$ >>; 
-       <:sig_item< val map : $maptype name$ >> ] 
+   let signature context name : Ast.sig_item list =  
+     [ <:sig_item< type $list:sigdec context name$ >>; 
+       <:sig_item< val map : $maptype context name$ >> ] 
 
-  let decl (name, _, r, _, _) : Camlp4.PreCast.Ast.module_binding =
+  let decl context (name, _, r, _, _) : Camlp4.PreCast.Ast.module_binding =
     if name = "f" then
       raise (Underivable ("deriving: Functor cannot be derived for types called `f'.\n"
                           ^"Please change the name of your type and try again."))
     else
       <:module_binding<
          $uid:classname ^ "_" ^ name$
-       : sig $list:signature name$ end
-       = $wrapper name (rhs r)$ >>
+       : sig $list:signature context name$ end
+       = $wrapper context name (rhs context r)$ >>
 
-  let gen_sig (tname, params, _, _, generated) = 
+  let gen_sig context (tname, params, _, _, generated) = 
     if tname = "f" then
       raise (Underivable ("deriving: Functor cannot be derived for types called `f'.\n"
                           ^"Please change the name of your type and try again."))
@@ -172,14 +174,18 @@ struct
         <:sig_item< >>
       else
         <:sig_item< module $uid:classname ^ "_" ^ tname$ :
-                    sig type $tdec tname$ val map : $maptype tname$ end >>
+                    sig type $tdec context tname$ val map : $maptype context tname$ end >>
+
+  let generate decls =
+    let context = setup_context decls in
+    <:str_item< module rec $list:List.map (decl context) decls$ >>
+
+  let generate_sigs decls =
+    let context = setup_context decls in
+    <:sig_item< $list:List.map (gen_sig context) decls$>>
+
+  let generate_expr _ = assert false
 
 end
 
-let _ = Base.register "Functor"
-  ((fun (loc, context, decls) ->
-     let module F = InContext(struct let loc = loc and context = context end) in
-       <:str_item< module rec $list:List.map F.decl decls$ >>),
-  (fun (loc, context, decls) ->
-     let module F = InContext(struct let loc = loc and context = context end) in
-       <:sig_item< $list:List.map F.gen_sig decls$>>))
+module Functor = Base.Register(Description)(InContext)

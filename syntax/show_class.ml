@@ -127,7 +127,7 @@ module InContext (L : Loc) : Class = struct
                     $self#call_expr ctxt e "format"$ formatter x >> in
           <:match_case< `$uid:name$ x -> $in_hovbox format_expr$ >>
       | Extends t ->
-          let patt, guard, cast = cast_pattern ctxt t in
+          let patt, guard, cast = cast_pattern ctxt.argmap t in
 	  let format_expr =
 	    <:expr< $self#call_expr ctxt t "format"$ formatter $cast$ >> in
           <:match_case< $patt$ when $guard$ -> $in_hovbox format_expr$ >>

@@ -179,7 +179,7 @@ module InContext (L : Loc) : Class = struct
             | _ -> raise ($uid:runtimename$.UnpicklingError $str:msg$))
 	  $`int:List.length fields$ >> in
       let mutable_type =
-	instantiate_modargs_repr ctxt
+	instantiate_modargs_repr ctxt.argmap
 	  (Record (List.map (fun (n,p,_) -> (n,p,`Mutable)) fields)) in
       <:expr< let module Mutable = struct
                 type $Ast.TyDcl (loc, "t", [], Untranslate.repr mutable_type, [])$
@@ -207,7 +207,7 @@ module InContext (L : Loc) : Class = struct
                     (W.store_repr thisid
                         ($uid:runtimename$.Repr.make ~constructor:$`int:tag_hash name$ [mid])))) >>
     | Extends t ->
-        let patt, guard, cast = cast_pattern ctxt t in
+        let patt, guard, cast = cast_pattern ctxt.argmap t in
 	<:match_case<
             ($patt$) when $guard$ ->
             ($self#call_expr ctxt t "pickle"$ $cast$) >>

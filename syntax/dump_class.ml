@@ -130,7 +130,7 @@ module InContext (L : Loc) : Class = struct
 	    <:match_case< `$name$ x -> $self#dump_int ctxt n$; $to_buffer$ >>,
             <:match_case< $`int:n$ -> `$name$ ($from_stream$) >> end
       | Extends t ->
-          let patt, guard, cast = cast_pattern ctxt t in
+          let patt, guard, cast = cast_pattern ctxt.argmap t in
 	  let to_buffer =
 	    <:expr< $self#call_expr ctxt t "to_buffer"$ buffer $cast$ >> in
 	  let from_stream =

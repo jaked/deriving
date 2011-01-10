@@ -32,8 +32,8 @@ module type ClassDescription = sig
 end
 
 module type Class = sig
-  val generate: context -> Type.decl list -> Ast.str_item
-  val generate_sigs: context -> Type.decl list -> Ast.sig_item
+  val generate: Type.decl list -> Ast.str_item
+  val generate_sigs: Type.decl list -> Ast.sig_item
   val generate_expr: context -> Type.expr -> Ast.module_expr
 end
 
@@ -94,14 +94,16 @@ module type ClassHelpers = sig
   val tuple: ?param:string -> int -> string list * Ast.patt * Ast.expr
 
   val cast_pattern:
-      context -> ?param:string -> Type.expr -> Ast.patt * Ast.expr * Ast.expr
+      Type.name Type.NameMap.t -> ?param:string ->
+	Type.expr -> Ast.patt * Ast.expr * Ast.expr
 
   (* For Functor only *)
   val modname_from_qname:  qname:string list -> classname:string -> Ast.ident
   val substitute: Type.name Type.NameMap.t -> Type.expr -> Type.expr
+  val setup_context: Type.decl list -> context
 
   (* For Pickle only *)
-  val instantiate_modargs_repr: context -> Type.repr -> Type.repr
+  val instantiate_modargs_repr: Type.name Type.NameMap.t -> Type.repr -> Type.repr
 
   class virtual make_module_expr : generator
   val make_module_sig: context -> Type.decl -> Ast.module_type
@@ -110,9 +112,9 @@ module type ClassHelpers = sig
   val default_generate:
       make_module_expr:(context -> Type.decl -> Ast.module_expr) ->
       make_module_type:(context -> Type.decl -> Ast.module_type) ->
-	context -> Type.decl list -> Ast.str_item
+	Type.decl list -> Ast.str_item
   val default_generate_sigs:
       make_module_sig:(context -> Type.decl -> Ast.module_type) ->
-	context -> Type.decl list -> Ast.sig_item
+	Type.decl list -> Ast.sig_item
 
 end

@@ -28,9 +28,7 @@ struct
           fatal_error loc msg
 
   let derive proj (loc : Loc.t) tdecls classname =
-    let context = display_errors loc (Base.setup_context loc) tdecls in
-      display_errors loc
-        (proj (Base.find classname)) (loc, context, tdecls)
+    display_errors loc (proj (Base.find classname)) (loc, tdecls)
   
   let derive_str loc (tdecls : Type.decl list) classname : Ast.str_item =
     derive fst loc tdecls classname

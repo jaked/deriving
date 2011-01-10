@@ -108,8 +108,8 @@ module InContext (L : Loc) : Class = struct
       | Tag (name, Some e) ->
 	  <:match_case< `$name$ l, `$name$ r -> $self#call_expr ctxt e "eq"$ l r >>
       | Extends t ->
-          let lpatt, lguard, lcast = cast_pattern ctxt ~param:"l" t in
-          let rpatt, rguard, rcast = cast_pattern ctxt ~param:"r" t in
+          let lpatt, lguard, lcast = cast_pattern ctxt.argmap ~param:"l" t in
+          let rpatt, rguard, rcast = cast_pattern ctxt.argmap ~param:"r" t in
 	  let patt = <:patt< ($lpatt$, $rpatt$) >> in
 	  let eq = <:expr< $self#call_expr ctxt t "eq"$ $lcast$ $rcast$ >> in
           <:match_case< $patt$ when $lguard$ && $rguard$ -> $eq$ >>
