@@ -182,19 +182,18 @@ let random_id length =
 let tag_hash s = 
   let wrap = 0x40000000 in
   let acc = ref 0 in
-  let mul = ref 1 in
   let len = String.length s in
     for i = 0 to len - 1 do
-      let c = String.unsafe_get s (len - i - 1) in
+      let c = String.unsafe_get s i in
       let n = Char.code c in
-        acc := (!acc + n * !mul) mod wrap;
-        mul := (!mul * 223) mod wrap;
+        acc := (223 * !acc + n);
     done;
-    !acc
+    acc := !acc land (1 lsl 31 - 1);
+    if !acc >= wrap then !acc - (1 lsl 31) else !acc
 
 let _ = 
   (* Sanity check to make sure the function doesn't change underneath
      us *)
   assert (tag_hash "premiums" = tag_hash "squigglier");
-  assert (tag_hash "deriving" = 398308260)
-
+  assert (tag_hash "deriving" = 398308260);
+  assert (tag_hash "Candela" = -1019855834)
