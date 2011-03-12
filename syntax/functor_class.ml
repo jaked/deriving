@@ -21,7 +21,7 @@ module Description : ClassDescription = struct
   let depends = []
 end
 
-module InContext (C : sig val loc : Camlp4.PreCast.Loc.t end) =
+module InContext (C : sig val _loc : Camlp4.PreCast.Loc.t end) =
 struct
   open C
   open Type
@@ -110,12 +110,12 @@ struct
           (List.fold_right2
              (fun t n (p,e) -> 
                 let v = Printf.sprintf "t%d" n in
-                  Ast.PaCom (loc, <:patt< $lid:v$ >>, p),
-                  Ast.ExCom (loc, <:expr< $expr context t$ $lid:v$ >>, e))
+                  Ast.PaCom (_loc, <:patt< $lid:v$ >>, p),
+                  Ast.ExCom (_loc, <:expr< $expr context t$ $lid:v$ >>, e))
              ts
              (List.range 0 (List.length ts))
              (<:patt< >>, <:expr< >>)) in
-        let pat, exp = Ast.PaTup (loc, args), Ast.ExTup (loc, exps) in
+        let pat, exp = Ast.PaTup (_loc, args), Ast.ExTup (_loc, exps) in
           <:expr< fun $pat$ -> $exp$ >>
 
   and case context = function

@@ -14,7 +14,7 @@ type context = {
 }
 
 module type Loc = sig
-  val loc : Loc.t (* location of the type definition being derived *)
+  val _loc : Loc.t (* location of the type definition being derived *)
 end
 
 type dependency = {

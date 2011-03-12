@@ -182,7 +182,7 @@ module InContext (L : Loc) : Class = struct
 	instantiate_modargs_repr ctxt.argmap
 	  (Record (List.map (fun (n,p,_) -> (n,p,`Mutable)) fields)) in
       <:expr< let module Mutable = struct
-                type $Ast.TyDcl (loc, "t", [], Untranslate.repr mutable_type, [])$
+                type $Ast.TyDcl (_loc, "t", [], Untranslate.repr mutable_type, [])$
               end in $record$ >>
 
     method record ?eq ctxt tname params constraints (fields : Type.field list) =

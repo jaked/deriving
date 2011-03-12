@@ -410,7 +410,7 @@ module type Untranslate = sig
   val sigdecl: decl -> Ast.ctyp list
 end
 
-module Untranslate (C:sig val loc : Camlp4.PreCast.Ast.Loc.t end) : Untranslate =
+module Untranslate (C:sig val _loc : Camlp4.PreCast.Ast.Loc.t end) : Untranslate =
 struct
   open Camlp4.PreCast
   open C
@@ -426,9 +426,9 @@ struct
     | x::xs -> <:ident< $uid:x$.$qname xs$ >>
         
   let unlist join items translate = 
-    List.fold_right join (List.map translate items) (Ast.TyNil loc)
+    List.fold_right join (List.map translate items) (Ast.TyNil _loc)
 
-  let pair l r = Ast.TySta (loc, l,r)
+  let pair l r = Ast.TySta (_loc, l,r)
   let bar l r = <:ctyp< $l$ | $r$ >>
   let semi l r = <:ctyp< $l$ ; $r$ >>
   let comma l r = <:ctyp< $l$ , $r$ >>
@@ -439,8 +439,8 @@ struct
         `Param p -> param p
       | `Function (f, t) -> <:ctyp< $expr f$ -> $expr t$ >>
       | `Tuple [t] -> expr t
-      | `Tuple ts -> Ast.TyTup (loc, unlist pair ts expr)
-      | `Constr (tcon, args) -> app (Ast.TyId (loc, qname tcon)) args
+      | `Tuple ts -> Ast.TyTup (_loc, unlist pair ts expr)
+      | `Constr (tcon, args) -> app (Ast.TyId (_loc, qname tcon)) args
       | _ -> assert false
     and app f = function
       | []    -> f
@@ -451,7 +451,7 @@ struct
   let poly (params, t) =
     List.fold_right
       (fun (p : param) (t : Ast.ctyp) -> 
-         Ast.TyPol (loc, param p, t))
+         Ast.TyPol (_loc, param p, t))
       params
       (expr t)
 
@@ -459,7 +459,7 @@ struct
       | `Fresh (None, t, `Private) -> <:ctyp< private $repr t$ >>
       | `Fresh (None, t, `Public) -> repr t
       | `Fresh (Some e, t, `Private) -> <:ctyp< $expr e$ == private $repr t$ >>
-      | `Fresh (Some e, t, `Public) -> Ast.TyMan (loc, expr e, repr t)
+      | `Fresh (Some e, t, `Public) -> Ast.TyMan (_loc, expr e, repr t)
       | `Expr t          -> expr t
       | `Variant (`Eq, tags) -> <:ctyp< [= $unlist bar tags tagspec$ ] >>
       | `Variant (`Gt, tags) -> <:ctyp< [> $unlist bar tags tagspec$ ] >>
@@ -476,15 +476,15 @@ struct
       | `Mutable   -> <:ctyp< $lid:name$ : mutable $poly t$ >> (* mutable l : t doesn't work; perhaps a camlp4 bug *)
       | `Immutable -> <:ctyp< $lid:name$ : $poly t$ >>
   and repr = function
-      | Sum summands  -> Ast.TySum (loc, unlist bar summands summand)
+      | Sum summands  -> Ast.TySum (_loc, unlist bar summands summand)
       | Record fields -> <:ctyp< { $unlist semi fields field$ }>>
 
   let constraint_ (e1,e2) = (expr e1, expr e2)
 
   let decl ((name, params, r, constraints,_): decl) =
-    Ast.TyDcl (loc, name, List.map param params, rhs r, List.map constraint_ constraints)
+    Ast.TyDcl (_loc, name, List.map param params, rhs r, List.map constraint_ constraints)
 
   let sigdecl ((name, params, r, constraints, _): decl) =
-    [Ast.TyDcl (loc, name, List.map param params, rhs r, List.map constraint_ constraints)]
+    [Ast.TyDcl (_loc, name, List.map param params, rhs r, List.map constraint_ constraints)]
 
 end

@@ -4,7 +4,6 @@ OCAMLC     = ocamlc.opt
 OCAMLOPT   = ocamlopt.opt
 OCAMLDEP   = ocamldep.opt
 ANNOTATE   = yes
-PPFLAGS    = -loc loc
 USE_CAMLP4 = yes
 LIBS       = dynlink camlp4lib unix
 

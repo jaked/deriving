@@ -68,13 +68,13 @@ struct
        <:expr<
          let module M = 
              struct
-               type $Ast.TyDcl (loc, "t", [], t, [])$
+               type $Ast.TyDcl (_loc, "t", [], t, [])$
                let test = function #t -> true | _ -> false
              end in M.test $lid:param$ >>,
        <:expr<
          (let module M = 
               struct
-                type $Ast.TyDcl (loc, "t", [], t, [])$
+                type $Ast.TyDcl (_loc, "t", [], t, [])$
                 let cast = function #t as t -> t | _ -> assert false
               end in M.cast $lid:param$ )>>)
 
@@ -96,7 +96,7 @@ struct
         (fun l r -> <:rec_binding< $l$ ; $r$ >>)
         (List.map (fun (label, exp) -> <:rec_binding< $lid:label$ = $exp$ >>) 
            fields) in
-        Ast.ExRec (loc, fs, Ast.ExNil loc)
+        Ast.ExRec (_loc, fs, Ast.ExNil _loc)
 
   let record_expression ?(prefix="") : Type.field list -> Ast.expr = 
     fun fields ->
@@ -104,7 +104,7 @@ struct
         (fun l r -> <:rec_binding< $l$ ; $r$ >>)
         (List.map (fun (label,_,_) -> <:rec_binding< $lid:label$ = $lid:prefix ^ label$ >>) 
            fields) in
-        Ast.ExRec (loc, es, Ast.ExNil loc)
+        Ast.ExRec (_loc, es, Ast.ExNil _loc)
 
   let mproject mexpr name = 
     match mexpr with
@@ -133,7 +133,7 @@ struct
   let tuple_expr : Ast.expr list -> Ast.expr = function
     | [] -> <:expr< () >>
     | [x] -> x
-    | x::xs -> Ast.ExTup (loc, List.fold_left (fun e t -> Ast.ExCom (loc, e,t)) x xs)
+    | x::xs -> Ast.ExTup (_loc, List.fold_left (fun e t -> Ast.ExCom (_loc, e,t)) x xs)
 
   let tuple ?(param="v") n : string list * Ast.patt * Ast.expr =
     let v n = Printf.sprintf "%s%d" param n in
@@ -145,12 +145,12 @@ struct
               (* At time of writing I haven't managed to write anything
                  using quotations that generates an n-tuple *)
               List.fold_left 
-                (fun (p, e) (patt, expr) -> Ast.PaCom (loc, p, patt), Ast.ExCom (loc, e, expr))
+                (fun (p, e) (patt, expr) -> Ast.PaCom (_loc, p, patt), Ast.ExCom (_loc, e, expr))
                 (<:patt< >>, <:expr< >>)
                 (List.map (fun n -> <:patt< $lid:v n$ >>, <:expr< $lid:v n $ >>)
                    (List.range 0 n))
             in
-              List.map v (List.range 0 n), Ast.PaTup (loc, patts), Ast.ExTup (loc, exprs)
+              List.map v (List.range 0 n), Ast.PaTup (_loc, patts), Ast.ExTup (_loc, exprs)
 
   let rec modname_from_qname ~qname ~classname =
     match qname with 
@@ -180,7 +180,7 @@ struct
       <:module_expr< $uid:runtimename$.$uid:name$($m$) >>
 
   let import_depend ctxt ty depends =
-    let d = depends loc in
+    let d = depends _loc in
     assert (ctxt.toplevel = None);
     let ctxt = { ctxt with toplevel = Some (classname, ty) } in
     <:str_item< module $uid:d.d_classname$ = $d.d_generate_expr ctxt ty$ >>
@@ -251,7 +251,7 @@ struct
 	    try [runtimename ; List.assoc qname predefs]
 	    with Not_found -> qname in
           let f = (modname_from_qname ~qname ~classname) in
-          self#mapply ctxt (Ast.MeId (loc, f)) params
+          self#mapply ctxt (Ast.MeId (_loc, f)) params
 
     method expr ctxt ty = match ty with
       | `Param p    ->                   (self#param      ctxt p)
@@ -454,15 +454,15 @@ module Register
     (MakeClass : functor(L : Loc) -> Class) = struct
 
   let generate (loc, decls) =
-    let module Class = MakeClass(struct let loc = loc end) in
+    let module Class = MakeClass(struct let _loc = loc end) in
     Class.generate decls
 
   let generate_sigs (loc, decls) =
-    let module Class = MakeClass(struct let loc = loc end) in
+    let module Class = MakeClass(struct let _loc = loc end) in
     Class.generate_sigs decls
 
   let depends loc =
-    let module Class = MakeClass(struct let loc = loc end) in
+    let module Class = MakeClass(struct let _loc = loc end) in
     { d_classname = Desc.classname;
       d_generate_expr = Class.generate_expr }
 

@@ -45,7 +45,7 @@ module InContext (L : Loc) : Class = struct
   open Description
 
   let mkName tname =
-    let file_name, sl, _, _, _, _, _, _ = Loc.to_tuple loc in
+    let file_name, sl, _, _, _, _, _, _ = Loc.to_tuple _loc in
     Printf.sprintf "%s_%d_%f_%s" file_name sl (Unix.gettimeofday ()) tname
 
   let wrap type_rep = [ <:str_item< let type_rep = $type_rep$ >> ]
