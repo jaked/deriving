@@ -440,8 +440,12 @@ end
 type deriver = Loc.t * Type.decl list -> Ast.str_item
 and sigderiver = Loc.t * Type.decl list -> Ast.sig_item
 let derivers : (name, (deriver * sigderiver)) Hashtbl.t = Hashtbl.create 15
-let register = Hashtbl.add derivers
-let find classname = 
+let hashtbl_add = Hashtbl.add derivers
+let register_hook = ref [hashtbl_add]
+let add_register_hook f = register_hook := f :: !register_hook
+let register name derivers =
+  List.iter (fun f -> f name derivers) !register_hook
+let find classname =
   try Hashtbl.find derivers classname
   with Not_found -> raise (NoSuchClass classname)
 let is_registered : name -> bool =

@@ -27,3 +27,7 @@ functor_class.cmo:
 functor_class.cmx:
 pickle_class.cmo: typeable_class.cmo eq_class.cmo
 pickle_class.cmx: typeable_class.cmx eq_class.cmx
+pa_deriving.cmo:
+pa_deriving.cmx:
+pa_deriving_tc.cmo:
+pa_deriving_tc.cmx:

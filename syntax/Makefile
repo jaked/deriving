@@ -19,6 +19,10 @@ base.cmo base.cmx base.depends: \
 	LIBS+=-syntax camlp4o -package camlp4.quotations.o
 extend.cmo extend.cmx extend.depends: \
 	LIBS+=-syntax camlp4o -package camlp4.extend,camlp4.quotations.o
+pa_deriving.cmo pa_deriving.cmx pa_deriving.depends: \
+	LIBS+=-syntax camlp4o -package camlp4.extend,camlp4.quotations.o
+pa_deriving_tc.cmo pa_deriving_tc.cmx pa_deriving_tc.depends: \
+	LIBS+=-syntax camlp4o -package camlp4.extend,camlp4.quotations.o,type-conv
 
 CLASSES := show_class.ml         \
            dump_class.ml         \
@@ -43,18 +47,28 @@ PREDEP := id.ml
 
 all: byte opt
 
-byte: pa_deriving.cma deriving
-opt: pa_deriving.cmxa deriving.opt
+byte:: pa_deriving.cma deriving
+opt:: pa_deriving.cmxa deriving.opt
+
+ifneq (${TYPECONV},)
+byte:: pa_deriving_tc.cma
+opt:: pa_deriving_tc.cmxa
+endif
 
 ##
 
-pa_deriving.cma: pa_deriving_common.cmo ${CLASSES:.ml=.cmo}
+pa_deriving.cma: pa_deriving_common.cmo pa_deriving.cmo ${CLASSES:.ml=.cmo}
 	${OCAMLC} -o $@ -a $^
-pa_deriving.cmxa: pa_deriving_common.cmx ${CLASSES:.ml=.cmx}
+pa_deriving.cmxa: pa_deriving_common.cmx pa_deriving.cmx ${CLASSES:.ml=.cmx}
 	${OCAMLOPT} -o $@ -a $^
 
-${CLASSES:.ml=.cmo}: pa_deriving_common.cmo
-${CLASSES:.ml=.cmx}: pa_deriving_common.cmx
+pa_deriving_tc.cma: pa_deriving_common.cmo pa_deriving_tc.cmo ${CLASSES:.ml=.cmo}
+	${OCAMLC} -o $@ -a $^
+pa_deriving_tc.cmxa: pa_deriving_common.cmx pa_deriving_tc.cmx ${CLASSES:.ml=.cmx}
+	${OCAMLOPT} -o $@ -a $^
+
+${CLASSES:.ml=.cmo} pa_deriving.cmo pa_deriving_tc.cmo: pa_deriving_common.cmo
+${CLASSES:.ml=.cmx} pa_deriving.cmx pa_deriving_tc.cmx: pa_deriving_common.cmx
 
 ##
 
@@ -99,9 +113,14 @@ distclean: clean
 # Dependencies
 depend: ${PREDEP}
 	echo > .depend
-	${MAKE} --no-print-directory ${SOURCES:.ml=.depends} ${CLASSES:.ml=.depends}
+	${MAKE} --no-print-directory \
+	  ${SOURCES:.ml=.depends} ${CLASSES:.ml=.depends} \
+	  pa_deriving.depends
+ifneq (${TYPECONV},)
+	${MAKE} --no-print-directory pa_deriving_tc.depends
+endif
 .PHONY: ${SOURCES:.ml=.depends} ${CLASSES:.ml=.depends}
-${SOURCES:.ml=.depends} ${CLASSES:.ml=.depends}: %.depends: %.ml
+${SOURCES:.ml=.depends} ${CLASSES:.ml=.depends} pa_deriving.depends pa_deriving_tc.depends: %.depends: %.ml
 	${OCAMLDEP} ${LIBS} $^ >> .depend
 
 -include .depend

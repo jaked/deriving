@@ -1,25 +1,36 @@
 include Makefile.config
 
-all:
+all: META
 	${MAKE} -C syntax
 	${MAKE} -C lib
 
-byte:
+byte: META
 	${MAKE} -C syntax byte
 	${MAKE} -C lib byte
 
-opt:
+opt: META
 	${MAKE} -C syntax opt
 	${MAKE} -C lib opt
+
+META: META.in
+	sed s/%%NAME%%/${PROJECTNAME}/ META.in > META
 
 clean:
 	${MAKE} -C syntax clean
 	${MAKE} -C lib clean
+	${MAKE} -C tests clean
+	-rm -f META
 
 distclean:
 	${MAKE} -C syntax distclean
 	${MAKE} -C lib distclean
+	${MAKE} -C tests distclean
 	-rm -f *~ \#* .\#*
+
+.PHONY: tests
+tests:
+	${MAKE} -C tests
+	./tests/tests
 
 include Makefile.filelist
 
