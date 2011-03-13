@@ -1,41 +1,107 @@
-OCAMLMAKEFILE = ../OCamlMakefile
+include ../Makefile.config
 
-OCAMLC     = ocamlc.opt
-OCAMLOPT   = ocamlopt.opt
-OCAMLDEP   = ocamldep.opt
-ANNOTATE   = yes
-USE_CAMLP4 = yes
-LIBS       = dynlink camlp4lib unix
+OCAMLC     := ${OCAMLFIND} ocamlc
+OCAMLOPT   := ${OCAMLFIND} ocamlopt
+OCAMLDEP   := ${OCAMLFIND} ocamldep
+LIBS       := -package camlp4
+DERIVING_LIBS := -package unix,camlp4.lib
 
-CAMLP4_PRE_NOPRINTER = 
+SOURCES := id.ml                 \
+           utils.ml              \
+           type.ml               \
+           defs.ml               \
+           base.ml               \
+           extend.ml             \
 
-CAMLP4_PREFILES = Camlp4Parsers/Camlp4OCamlRevisedParser.cmo \
-                  Camlp4Parsers/Camlp4OCamlParser.cmo        \
-                  Camlp4Printers/Camlp4AutoPrinter.cmo
-CAMLP4_POSTFILES = Camlp4Bin.cmo
-CAMLP4_NATIVE_PREFILES=$(CAMLP4_PREFILES:.cmo=.cmx)
-CAMLP4_NATIVE_POSTFILES=$(CAMLP4_POSTFILES:.cmo=.cmx)
+type.cmo type.cmx type.depends: \
+	LIBS+=-syntax camlp4o -package camlp4.quotations.r
+base.cmo base.cmx base.depends: \
+	LIBS+=-syntax camlp4o -package camlp4.quotations.o
+extend.cmo extend.cmx extend.depends: \
+	LIBS+=-syntax camlp4o -package camlp4.extend,camlp4.quotations.o
 
-SOURCES = id.ml                 \
-          utils.ml              \
-          type.ml               \
-          defs.ml               \
-          base.ml               \
-          extend.ml             \
-          show_class.ml         \
-          dump_class.ml         \
-          enum_class.ml         \
-          bounded_class.ml      \
-          eq_class.ml           \
-          typeable_class.ml     \
-          functor_class.ml      \
-          pickle_class.ml       \
+CLASSES := show_class.ml         \
+           dump_class.ml         \
+           enum_class.ml         \
+           bounded_class.ml      \
+           eq_class.ml           \
+           typeable_class.ml     \
+           functor_class.ml      \
+           pickle_class.ml       \
 
-RESULT = deriving
+${CLASSES:.ml=.cmo} ${CLASSES:.ml=.cmx} ${CLASSES:.ml=.depends}: \
+	LIBS+=-syntax camlp4o -package camlp4.quotations.o
 
-all: exe
+CAMLP4_PREFILES  := Camlp4Parsers/Camlp4OCamlRevisedParser.cmo \
+                    Camlp4Parsers/Camlp4OCamlParser.cmo        \
+                    Camlp4Printers/Camlp4AutoPrinter.cmo
+CAMLP4_POSTFILES := Camlp4Bin.cmo
 
-include $(OCAMLMAKEFILE)
+PREDEP := id.ml
 
-exe: $(IMPL_CMO)
-	$(OCAMLC) -linkall $(ALL_LDFLAGS) $(CAMLP4_PREFILES) $(IMPL_CMO) -o deriving $(CAMLP4_POSTFILES)
+##
+
+all: byte opt
+
+byte: pa_deriving.cma deriving
+opt: pa_deriving.cmxa deriving.opt
+
+##
+
+pa_deriving.cma: pa_deriving_common.cmo ${CLASSES:.ml=.cmo}
+	${OCAMLC} -o $@ -a $^
+pa_deriving.cmxa: pa_deriving_common.cmx ${CLASSES:.ml=.cmx}
+	${OCAMLOPT} -o $@ -a $^
+
+${CLASSES:.ml=.cmo}: pa_deriving_common.cmo
+${CLASSES:.ml=.cmx}: pa_deriving_common.cmx
+
+##
+
+pa_deriving_common.cmo: ${SOURCES:.ml=.cmo}
+	${OCAMLC} -o $@ -pack $^
+pa_deriving_common.cmx: ${SOURCES:.ml=.cmx}
+	${OCAMLOPT} -o $@ -pack $^
+${SOURCES:.ml=.cmx}: FOR_PACK=-for-pack Pa_deriving_common
+
+##
+
+deriving: pa_deriving.cma
+	${OCAMLC} -linkpkg -o $@ \
+	  ${DERIVING_LIBS} ${CAMLP4_PREFILES} $^ ${CAMLP4_POSTFILES}
+
+deriving.opt: pa_deriving.cmxa
+	${OCAMLOPT} -linkpkg -o $@ \
+	  ${DERIVING_LIBS} ${CAMLP4_PREFILES:.cmo=.cmx} $^ ${CAMLP4_POSTFILES:.cmo=.cmx}
+
+##
+
+id.ml: id.mlp ../Makefile.config ../VERSION
+	sed -e s/%%NAME%%/${PROJECTNAME}/ -e s/%%VERSION%%/`cat ../VERSION`/ $< > $@
+
+# Common rules
+
+%.cmi: %.mli
+	${OCAMLC} ${LIBS} -c $<
+%.cmo: %.ml
+	${OCAMLC} ${LIBS} -c $<
+%.cmx: %.ml
+	${OCAMLOPT} ${LIBS} ${FOR_PACK} -c $<
+
+# Clean up
+clean:
+	-rm -f *.cm[ioax] *.cmxa *.cmxs *.o *.a *.annot
+	-rm -f ${PREDEP}
+	-rm -f deriving deriving.opt
+distclean: clean
+	-rm -f *~ \#* .\#*
+
+# Dependencies
+depend: ${PREDEP}
+	echo > .depend
+	${MAKE} --no-print-directory ${SOURCES:.ml=.depends} ${CLASSES:.ml=.depends}
+.PHONY: ${SOURCES:.ml=.depends} ${CLASSES:.ml=.depends}
+${SOURCES:.ml=.depends} ${CLASSES:.ml=.depends}: %.depends: %.ml
+	${OCAMLDEP} ${LIBS} $^ >> .depend
+
+-include .depend

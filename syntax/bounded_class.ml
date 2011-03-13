@@ -1,11 +1,9 @@
-(*pp camlp4of *)
-
 (* Copyright Jeremy Yallop 2007.
    This file is free software, distributed under the MIT license.
    See the file COPYING for details.
 *)
 
-open Defs
+open Pa_deriving_common.Defs
 
 module Description : ClassDescription = struct
   let classname = "Bounded"
@@ -30,13 +28,13 @@ end
 
 module InContext (L : Loc) : Class = struct
 
-  open Base
-  open Utils
-  open Type
+  open Pa_deriving_common.Base
+  open Pa_deriving_common.Utils
+  open Pa_deriving_common.Type
   open Camlp4.PreCast
 
   open L
-  module Helpers = Base.InContext(L)(Description)
+  module Helpers = Pa_deriving_common.Base.InContext(L)(Description)
   open Helpers
 
   let wrap min max =
@@ -86,4 +84,4 @@ module InContext (L : Loc) : Class = struct
 
 end
 
-module Bounded = Base.Register(Description)(InContext)
+module Bounded = Pa_deriving_common.Base.Register(Description)(InContext)

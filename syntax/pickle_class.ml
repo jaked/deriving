@@ -1,11 +1,9 @@
-(*pp camlp4of *)
-
 (* Copyright Jeremy Yallop 2007.
    This file is free software, distributed under the MIT license.
    See the file COPYING for details.
 *)
 
-open Defs
+open Pa_deriving_common.Defs
 
 module Description : ClassDescription = struct
   let classname = "Pickle"
@@ -34,14 +32,14 @@ end
 
 module InContext (L : Loc) : Class = struct
 
-  open Base
-  open Utils
-  open Type
+  open Pa_deriving_common.Base
+  open Pa_deriving_common.Utils
+  open Pa_deriving_common.Type
   open Camlp4.PreCast
 
   open Description
   open L
-  module Helpers = Base.InContext(L)(Description)
+  module Helpers = Pa_deriving_common.Base.InContext(L)(Description)
   open Helpers
   open Description
 
@@ -185,7 +183,7 @@ module InContext (L : Loc) : Class = struct
                 type $Ast.TyDcl (_loc, "t", [], Untranslate.repr mutable_type, [])$
               end in $record$ >>
 
-    method record ?eq ctxt tname params constraints (fields : Type.field list) =
+    method record ?eq ctxt tname params constraints (fields : Pa_deriving_common.Type.field list) =
       wrap ctxt
         ~picklers:[self#record_pickler ctxt fields]
         ~unpickler:(self#record_unpickle ctxt tname fields)
@@ -263,4 +261,4 @@ end
 
 end
 
-module Pickle = Base.Register(Description)(InContext)
+module Pickle = Pa_deriving_common.Base.Register(Description)(InContext)

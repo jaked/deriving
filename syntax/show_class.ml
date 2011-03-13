@@ -1,11 +1,9 @@
-(*pp camlp4of *)
-
 (* Copyright Jeremy Yallop 2007.
    This file is free software, distributed under the MIT license.
    See the file COPYING for details.
 *)
 
-open Defs
+open Pa_deriving_common.Defs
 
 module Description : ClassDescription = struct
   let classname = "Show"
@@ -35,13 +33,13 @@ end
 
 module InContext (L : Loc) : Class = struct
 
-  open Base
-  open Utils
-  open Type
+  open Pa_deriving_common.Base
+  open Pa_deriving_common.Utils
+  open Pa_deriving_common.Type
   open Camlp4.PreCast
 
   open L
-  module Helpers = Base.InContext(L)(Description)
+  module Helpers = Pa_deriving_common.Base.InContext(L)(Description)
   open Helpers
   open Description
 
@@ -116,7 +114,7 @@ module InContext (L : Loc) : Class = struct
           Format.pp_print_char formatter '}'; >> in
       wrap [ <:match_case< $record_pattern fields$ -> $in_hovbox format_record$ >>]
 
-    method polycase ctxt : Type.tagspec -> Ast.match_case = function
+    method polycase ctxt : Pa_deriving_common.Type.tagspec -> Ast.match_case = function
       | Tag (name, None) ->
 	  let format_expr =
 	    <:expr< Format.pp_print_string formatter $str:"`" ^ name ^" "$ >> in
@@ -144,4 +142,4 @@ module InContext (L : Loc) : Class = struct
 
 end
 
-module Show = Base.Register(Description)(InContext)
+module Show = Pa_deriving_common.Base.Register(Description)(InContext)

@@ -1,11 +1,9 @@
-(*pp camlp4of *)
-
 (* Copyright Jeremy Yallop 2007.
    This file is free software, distributed under the MIT license.
    See the file COPYING for details.
 *)
 
-open Defs
+open Pa_deriving_common.Defs
 open Camlp4.PreCast
 
 module Description : ClassDescription = struct
@@ -24,11 +22,11 @@ end
 module InContext (C : sig val _loc : Camlp4.PreCast.Loc.t end) =
 struct
   open C
-  open Type
-  open Utils
-  open Base
+  open Pa_deriving_common.Type
+  open Pa_deriving_common.Utils
+  open Pa_deriving_common.Base
 
-  module Helpers = Base.InContext(C)(Description)
+  module Helpers = Pa_deriving_common.Base.InContext(C)(Description)
   open Helpers
   open Description
 
@@ -87,7 +85,7 @@ struct
         let patt, guard, exp = cast_pattern context.argmap t in
           <:match_case< $patt$ when $guard$ -> $expr context t$ $exp$ >>
 
-  and expr context : Type.expr -> Ast.expr = function
+  and expr context : Pa_deriving_common.Type.expr -> Ast.expr = function
     | t when not (contains_tvars t) -> <:expr< fun x -> x >>
     | `Param (p,_) -> <:expr< $lid:NameMap.find p (param_map context)$ >>
     | `Function (f,t) when not (contains_tvars t) -> 
@@ -188,4 +186,4 @@ struct
 
 end
 
-module Functor = Base.Register(Description)(InContext)
+module Functor = Pa_deriving_common.Base.Register(Description)(InContext)

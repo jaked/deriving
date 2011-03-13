@@ -1,11 +1,9 @@
-(*pp camlp4of *)
-
 (* Copyright Jeremy Yallop 2007.
    This file is free software, distributed under the MIT license.
    See the file COPYING for details.
 *)
 
-open Defs
+open Pa_deriving_common.Defs
 
 module Description : ClassDescription = struct
   let classname = "Eq"
@@ -35,13 +33,13 @@ end
 
 module InContext (L : Loc) : Class = struct
 
-  open Base
-  open Utils
-  open Type
+  open Pa_deriving_common.Base
+  open Pa_deriving_common.Utils
+  open Pa_deriving_common.Type
   open Camlp4.PreCast
 
   open L
-  module Helpers = Base.InContext(L)(Description)
+  module Helpers = Pa_deriving_common.Base.InContext(L)(Description)
   open Helpers
   open Description
 
@@ -103,7 +101,7 @@ module InContext (L : Loc) : Class = struct
 	wrap [ <:match_case< (($lpatt$), ($rpatt$)) -> $expr$ >> ]
 
 
-    method polycase ctxt : Type.tagspec -> Ast.match_case = function
+    method polycase ctxt : Pa_deriving_common.Type.tagspec -> Ast.match_case = function
       | Tag (name, None) -> <:match_case< `$name$, `$name$ -> true >>
       | Tag (name, Some e) ->
 	  <:match_case< `$name$ l, `$name$ r -> $self#call_expr ctxt e "eq"$ l r >>
@@ -126,4 +124,4 @@ module InContext (L : Loc) : Class = struct
 
 end
 
-module Eq = Base.Register(Description)(InContext)
+module Eq = Pa_deriving_common.Base.Register(Description)(InContext)

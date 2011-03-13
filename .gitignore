@@ -1,0 +1,14 @@
+*.cm[iaox]
+*.cmxa
+*.cmxs
+*.cmxas
+*.a
+*.o
+*.annot
+._*
+*~
+#*#
+tests/tests
+META
+syntax/deriving
+syntax/deriving.opt

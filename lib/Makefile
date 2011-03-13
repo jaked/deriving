@@ -1,26 +1,55 @@
-OCAMLMAKEFILE = ../OCamlMakefile
+include ../Makefile.config
 
-PATH       := $(PATH):../syntax
+OCAMLC     := ${OCAMLFIND} ocamlc
+OCAMLOPT   := ${OCAMLFIND} ocamlopt
+OCAMLDEP   := ${OCAMLFIND} ocamldep
+PP         := -package camlp4 -ppopt ../syntax/pa_deriving.cma -syntax camlp4o
 
-OCAMLOPT   = ocamlopt.opt
-OCAMLC     = ocamlc.opt
-OCAMLDEP   = ocamldep.opt
-OCAMLFLAGS =-w ae
-LIBS       = nums str unix
+OCAMLFLAGS := -w ae
 
-SOURCES = deriving_Show.ml           deriving_Show.mli		\
-          deriving_interned.mli      deriving_interned.ml	\
-          deriving_Eq.ml             deriving_Eq.mli		\
-          deriving_Bounded.ml        deriving_Bounded.mli	\
-          deriving_Enum.ml           deriving_Enum.mli		\
-          deriving_monad.ml          deriving_monad.mli		\
-          deriving_Dump.ml           deriving_Dump.mli		\
-          deriving_Typeable.ml       deriving_Typeable.mli	\
-          deriving_dynmap.ml         deriving_dynmap.mli	\
-          deriving_Pickle.ml	     deriving_Pickle.mli    	\
-          deriving_Functor.ml        deriving_Functor.mli	\
+SOURCES = deriving_Show.ml           \
+          deriving_interned.ml       \
+          deriving_Eq.ml             \
+          deriving_Bounded.ml        \
+          deriving_Enum.ml           \
+          deriving_monad.ml          \
+          deriving_Dump.ml           \
+          deriving_Typeable.ml       \
+          deriving_dynmap.ml         \
+          deriving_Pickle.ml	     \
+          deriving_Functor.ml        \
 
+##
 
-RESULT  = deriving
+all: byte opt
 
-include $(OCAMLMAKEFILE)
+byte: deriving.cma
+opt: deriving.cmxa
+
+##
+
+deriving.cma: ${SOURCES:.ml=.cmo}
+	${OCAMLC} -a -o $@ $^
+deriving.cmxa: ${SOURCES:.ml=.cmx}
+	${OCAMLOPT} -a -o $@ $^
+
+# Common rules
+
+%.cmi: %.mli
+	${OCAMLC} ${OCAMLFLAGS} ${PP} -c $<
+%.cmo: %.ml
+	${OCAMLC} ${OCAMLFLAGS} ${PP} -c $<
+%.cmx: %.ml
+	${OCAMLOPT} ${OCAMLFLAGS} ${PP} -c $<
+
+# Clean up
+clean:
+	-rm -f *.cm[ioax] *.cmxa *.cmxs *.o *.a *.annot
+distclean: clean
+	-rm -f *~ \#* .\#*
+
+# Dependencies
+depend:
+	${OCAMLDEP} ${PP} *.ml *.mli > .depend
+
+-include .depend

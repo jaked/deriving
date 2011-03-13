@@ -1,14 +1,15 @@
-OCAMLMAKEFILE = ../OCamlMakefile
+include ../Makefile.config
 
-AUXLIB_DIRS  = ../lib/
-OCAMLOPT     = ocamlopt.opt
-OCAMLC       = ocamlc.opt
-OCAMLDEP     = ocamldep
-PATH        := $(PATH):../syntax
+OCAMLC     := ${OCAMLFIND} ocamlc
+OCAMLOPT   := ${OCAMLFIND} ocamlopt
+OCAMLDEP   := ${OCAMLFIND} ocamldep
+PP         := -package camlp4 -ppopt ../syntax/pa_deriving.cma -syntax camlp4o
+LIBS       := -I ../lib -package num
+
 OCAMLFLAGS   = -w Aef
 
 SOURCES = defs.ml               \
-          bimap.ml bimap.mli    \
+          bimap.ml	        \
           sigs.ml               \
           pickle_tests.ml       \
 	  typeable_tests.ml     \
@@ -21,11 +22,29 @@ SOURCES = defs.ml               \
           exp.ml                \
           inline.ml             \
 
-LIBS    = nums deriving
-RESULT  = tests
-CLIBS 	= 
+##
 
-INCDIRS = $(AUXLIB_DIRS)
-LIBDIRS = $(AUXLIB_DIRS)
+tests: ${SOURCES:.ml=.cmo}
+	${OCAMLC} -o $@ ${LIBS} -linkpkg deriving.cma $^
 
-include $(OCAMLMAKEFILE)
+# Common rules
+
+%.cmi: %.mli
+	${OCAMLC} ${OCAMLFLAGS} ${PP} ${LIBS} -c $<
+%.cmo: %.ml
+	${OCAMLC} ${OCAMLFLAGS} ${PP} ${LIBS} -c $<
+%.cmx: %.ml
+	${OCAMLOPT} ${OCAMLFLAGS} ${PP} ${LIBS} -c $<
+
+# Clean up
+clean:
+	-rm -f *.cm[ioax] *.cmxa *.cmxs *.o *.a *.annot
+	-rm -f tests
+distclean: clean
+	-rm -f *~ \#* .\#*
+
+# Dependencies
+depend:
+	${OCAMLDEP} ${PP} *.ml *.mli > .depend
+
+-include .depend

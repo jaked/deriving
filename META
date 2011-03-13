@@ -1,0 +1,18 @@
+version = "dev"
+description = "Deriving (patched for the Ocsigen project)"
+
+### All modules
+
+archive(byte) = "deriving.cma"
+archive(native) = "deriving.cmxa"
+
+package "syntax" (
+  requires(syntax) = "camlp4"
+  archive(syntax, preprocessor) = "pa_deriving.cma"
+  archive(syntax, toploop) = "pa_deriving.cma"
+  package "base" (
+    requires(syntax) = "camlp4"
+    archive(syntax, preprocessor) = "pa_deriving_common.cmo"
+    archive(syntax, toploop) = "pa_deriving_common.cmo"
+  )
+)

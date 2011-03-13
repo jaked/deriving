@@ -1,0 +1,20 @@
+INTF := syntax/pa_deriving_common.cmi \
+        lib/deriving_Dump.cmi \
+	lib/deriving_monad.cmi \
+	lib/deriving_dynmap.cmi \
+	lib/deriving_Show.cmi \
+	lib/deriving_Functor.cmi \
+	lib/deriving_Bounded.cmi \
+	lib/deriving_Typeable.cmi \
+	lib/deriving_Enum.cmi \
+	lib/deriving_interned.cmi \
+	lib/deriving_Eq.cmi \
+	lib/deriving_Pickle.cmi \
+
+IMPL := syntax/pa_deriving_common.cmo \
+        syntax/pa_deriving.cma \
+        lib/deriving.cma \
+
+NATIMPL := syntax/pa_deriving_common.cmx \
+           syntax/pa_deriving.cmxa \
+           lib/deriving.cmxa \
