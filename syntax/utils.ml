@@ -66,6 +66,13 @@ struct
   | [], [] -> []
   | x::xs, y::ys -> (x, y) :: zip xs ys
   | _, _ -> invalid_arg "List.zip"
+
+  let rec split3 xyzs = match xyzs with
+  | [] -> [], [], []
+  | (x, y, z) :: xyzs ->
+      let xs, ys, zs = split3 xyzs in
+      x :: xs, y :: ys, z :: zs
+
 end
 
 module F =
