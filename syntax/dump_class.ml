@@ -116,17 +116,16 @@ module InContext (L : Loc) : Class = struct
 
     method polycase ctxt tagspec n : Ast.match_case * Ast.match_case =
       match tagspec with
-      | Tag (name, args) -> begin match args with
-        | None ->
+      | Tag (name, []) ->
 	    <:match_case< `$name$ -> $self#dump_int ctxt n$ >>,
             <:match_case< $`int:n$ -> `$name$ >>
-        | Some e ->
+      | Tag (name, es) ->
 	    let to_buffer =
-	      <:expr< $self#call_expr ctxt e "to_buffer"$ buffer x >> in
+	      <:expr< $self#call_expr ctxt (`Tuple es) "to_buffer"$ buffer x >> in
 	    let from_stream =
-	      <:expr< $self#call_expr ctxt e "from_stream"$ stream >> in
+	      <:expr< $self#call_expr ctxt (`Tuple es) "from_stream"$ stream >> in
 	    <:match_case< `$name$ x -> $self#dump_int ctxt n$; $to_buffer$ >>,
-            <:match_case< $`int:n$ -> `$name$ ($from_stream$) >> end
+            <:match_case< $`int:n$ -> `$name$ ($from_stream$) >>
       | Extends t ->
           let patt, guard, cast = cast_pattern ctxt.argmap t in
 	  let to_buffer =

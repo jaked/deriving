@@ -102,9 +102,9 @@ module InContext (L : Loc) : Class = struct
 
 
     method polycase ctxt : Pa_deriving_common.Type.tagspec -> Ast.match_case = function
-      | Tag (name, None) -> <:match_case< `$name$, `$name$ -> true >>
-      | Tag (name, Some e) ->
-	  <:match_case< `$name$ l, `$name$ r -> $self#call_expr ctxt e "eq"$ l r >>
+      | Tag (name, []) -> <:match_case< `$name$, `$name$ -> true >>
+      | Tag (name, es) ->
+	  <:match_case< `$name$ l, `$name$ r -> $self#call_expr ctxt (`Tuple es) "eq"$ l r >>
       | Extends t ->
           let lpatt, lguard, lcast = cast_pattern ctxt.argmap ~param:"l" t in
           let rpatt, rguard, rcast = cast_pattern ctxt.argmap ~param:"r" t in

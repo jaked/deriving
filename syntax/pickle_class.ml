@@ -190,17 +190,17 @@ module InContext (L : Loc) : Class = struct
 
 
     method polycase_pickle ctxt = function
-    | Tag (name, None) -> <:match_case<
+    | Tag (name, []) -> <:match_case<
         (`$name$ as obj) ->
           W.allocate obj
               (fun thisid ->
                  W.store_repr thisid
                     ($uid:runtimename$.Repr.make ~constructor:$`int:tag_hash name$ [])) >>
-    | Tag (name, Some t) -> <:match_case<
+    | Tag (name, ts) -> <:match_case<
         (`$name$ v1 as obj) ->
            W.allocate obj
             (fun thisid ->
-             $bind$ ($self#call_expr ctxt t "pickle"$ v1)
+             $bind$ ($self#call_expr ctxt (`Tuple ts) "pickle"$ v1)
                     (fun mid ->
                     (W.store_repr thisid
                         ($uid:runtimename$.Repr.make ~constructor:$`int:tag_hash name$ [mid])))) >>
@@ -212,11 +212,11 @@ module InContext (L : Loc) : Class = struct
 
     method polycase_unpickler ctxt tname tags =
       let do_tag = function
-      | (name, None)   ->
+      | (name, [])   ->
 	  <:match_case< $`int:(tag_hash name)$, [] -> return `$name$ >>
-      | (name, Some t) ->
+      | (name, ts) ->
 	  <:match_case< $`int:(tag_hash name)$, [x] ->
-	                $bind$ ($self#call_expr ctxt t "unpickle"$ x)
+	                $bind$ ($self#call_expr ctxt (`Tuple ts) "unpickle"$ x)
 	                       (fun o -> return (`$name$ o)) >> in
       let do_extensions tys =
 	(* Try each extension in turn.  If we get an UnknownTag failure,

@@ -79,8 +79,8 @@ struct
    [[`C1 t]] = `C1 t->`C0 [[t]] t                          unary tag
 *)
   let rec polycase context = function
-    | Tag (name, None) -> <:match_case< `$name$ -> `$name$ >>
-    | Tag (name, Some e) -> <:match_case< `$name$ x -> `$name$ ($expr context e$ x) >>
+    | Tag (name, []) -> <:match_case< `$name$ -> `$name$ >>
+    | Tag (name, es) -> <:match_case< `$name$ x -> `$name$ ($expr context (`Tuple es)$ x) >>
     | Extends t -> 
         let patt, guard, exp = cast_pattern context.argmap t in
           <:match_case< $patt$ when $guard$ -> $expr context t$ $exp$ >>

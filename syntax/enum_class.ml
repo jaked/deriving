@@ -54,7 +54,7 @@ module InContext (L : Loc) : Class = struct
       List.fold_right2
         (fun n tagspec rest ->
            match tagspec with
-             | Tag (name, None) -> <:expr< (`$name$, $`int:n$) :: $rest$ >>
+             | Tag (name, []) -> <:expr< (`$name$, $`int:n$) :: $rest$ >>
              | Tag (name, _) -> raise (Underivable ("Enum cannot be derived because the tag "^
                                                       name^" is not nullary"))
              | _ -> raise (Underivable ("Enum cannot be derived for this "

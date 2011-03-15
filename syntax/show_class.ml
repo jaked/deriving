@@ -115,14 +115,14 @@ module InContext (L : Loc) : Class = struct
       wrap [ <:match_case< $record_pattern fields$ -> $in_hovbox format_record$ >>]
 
     method polycase ctxt : Pa_deriving_common.Type.tagspec -> Ast.match_case = function
-      | Tag (name, None) ->
+      | Tag (name, []) ->
 	  let format_expr =
 	    <:expr< Format.pp_print_string formatter $str:"`" ^ name ^" "$ >> in
           <:match_case< `$uid:name$ -> $format_expr$ >>
-      | Tag (name, Some e) ->
+      | Tag (name, es) ->
 	  let format_expr =
 	    <:expr< Format.pp_print_string formatter $str:"`" ^ name ^" "$;
-                    $self#call_expr ctxt e "format"$ formatter x >> in
+                    $self#call_expr ctxt (`Tuple es) "format"$ formatter x >> in
           <:match_case< `$uid:name$ x -> $in_hovbox format_expr$ >>
       | Extends t ->
           let patt, guard, cast = cast_pattern ctxt.argmap t in

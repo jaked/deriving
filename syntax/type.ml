@@ -43,7 +43,7 @@ and poly_expr = param list * expr
        no support for '&' yet.
     *)
 and variant = [`Gt | `Lt | `Eq] * tagspec list
-and tagspec = Tag of name * expr option 
+and tagspec = Tag of name * expr list
               | Extends of expr
 
 class virtual ['result] fold = 
@@ -98,8 +98,7 @@ object (self : 'self)
 
   method tagspec t =
     self#crush (match t with
-                    Tag (_, None) -> []
-                  | Tag (_, Some e)
+                  | Tag (_, exprs) -> List.map self#expr exprs
                   | Extends e -> [self#expr e])
 end
 
@@ -143,9 +142,9 @@ object (self : 'self)
 
   method variant (t, tagspecs)
     = (t, List.map (self # tagspec) tagspecs)
-    
+
   method tagspec = function
-    | Tag (name, eopt) -> Tag (name, Option.map (self # expr) eopt)
+    | Tag (name, exprs) -> Tag (name, List.map self # expr exprs)
     | Extends e -> Extends (self # expr e)
 end
 
@@ -258,10 +257,10 @@ struct
       | Ast.TyLab _ -> failwith "deriving does not support label types"
       | e -> failwith ("unexpected type at expr : " ^ Utils.DumpAst.ctyp e)
     and tagspec = function
-      | Ast.TyVrn (_,tag)                  -> Tag (tag, None), []
+      | Ast.TyVrn (_,tag)                  -> Tag (tag, []), []
       | Ast.TyOf (_, Ast.TyVrn (_,tag), t) -> 
           let es, vs = List.split (list expr split_comma t) in 
-            Tag (tag, Some (`Tuple es)), List.concat vs
+            Tag (tag, es), List.concat vs
       | t                                  -> let e, v = expr t in Extends e, v
     and application : Ast.ctyp -> (qname * expr list) * vmap = function
       | Ast.TyApp (_, (Ast.TyApp _ as a), t) -> 
@@ -464,8 +463,8 @@ struct
       | `Variant (`Lt, tags) -> <:ctyp< [< $unlist bar tags tagspec$ ] >>
       | `Nothing -> <:ctyp< >>
   and tagspec = function
-      | Tag (c, None) -> <:ctyp< `$c$ >>
-      | Tag (c, Some t) -> <:ctyp< `$c$ of $expr t$ >>
+      | Tag (c, []) -> <:ctyp< `$c$ >>
+      | Tag (c, ts) -> <:ctyp< `$c$ of $expr (`Tuple ts)$ >>
       | Extends t -> <:ctyp< $expr t$ >>
   and summand (name, (args : expr list)) =
       let args = unlist and_ args expr in

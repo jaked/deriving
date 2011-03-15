@@ -75,9 +75,9 @@ module InContext (L : Loc) : Class = struct
       let tags, extends =
 	List.fold_left
           (fun (tags, extends) -> function
-            | Tag (l, None)  -> <:expr< ($str:l$, None) :: $tags$ >>, extends
-            | Tag (l,Some t) ->
-		<:expr< ($str:l$, Some $self#call_expr ctxt t "type_rep"$) ::$tags$ >>,
+            | Tag (l, [])  -> <:expr< ($str:l$, None) :: $tags$ >>, extends
+            | Tag (l, ts) ->
+		<:expr< ($str:l$, Some $self#call_expr ctxt (`Tuple ts) "type_rep"$) ::$tags$ >>,
 		extends
             | Extends t ->
 		tags,

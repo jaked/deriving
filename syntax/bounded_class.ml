@@ -62,7 +62,7 @@ module InContext (L : Loc) : Class = struct
 
     method variant ctxt tname params constraints (_, tags) =
       let extract_name = function
-        | Tag (name, None) -> name
+        | Tag (name, []) -> name
         | Tag (name, _) -> raise (Underivable ("Bounded cannot be derived because "
 					       ^ "the tag " ^ name^" is not nullary"))
         | _ -> raise (Underivable ("Bounded cannot be derived for this "
