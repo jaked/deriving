@@ -19,7 +19,7 @@ package "syntax" (
 )
 
 ## Presence of type-conv shoud be detected with the predicate "pkg_type-conv"
-## However the 'dash' in an predicat name is invalid... (2011/03).
+## However the 'dash' in an predicat name is invalid... (GH 2011/03).
 
 package "syntax_tc" (
   requires(syntax) = "camlp4,unix,type-conv"

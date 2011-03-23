@@ -1,34 +1,72 @@
-The patches in these repository are propositions, that will hopefuly
-be merged in the main repository maintened by jaked.
+This release of deriving-ocsigen library is based on the deriving
+library by Jeremy Yallop. See:
 
-Currently, it contains small bug fixes and code simplifications.
+  http://code.google.com/p/deriving/
+  https://github.com/jaked/deriving
 
-A long time target is to add a second code generator that use
-first-class modules instead of recursive module. It will eventually
-allow deriving non-regular datatypes.
+Main changes are:
 
-Grégoire Henry
-henry@pps.jussieu.fr
+ - ocamlfind compatibility
+ - type-conv compatibility mode
+ - simplify the definition of new class
+ - fix small bugs
 
 ######
 
-Typing `make' in this directory should build both the preprocessor
-(syntax/deriving) and the libraries (lib/deriving.cma,
-lib/deriving.cmxa).
+Requirements:
+=============
 
-You can run the tests by changing to the test directory and building
-and running the `tests' executable
+ * ocaml and camlp4
+ * type-conv (optionnal)
 
-   $ cd tests
-   $ make
-   ...
-   $ ./tests
-   Tests succeeded!
+Build intructions:
+==================
 
-There's very limited documentation at present, but you should be able
-to get started by looking at the test files.
+ $ ${EDITOR} Makefile.config
+ $ make
 
-Any comments are very welcome.
+ $ make tests
 
-Jeremy Yallop
-jeremy.yallop@ed.ac.uk
+ # make install
+
+Examples:
+=========
+
+ $ ocaml
+        Objective Caml version 3.12.0
+
+ # #use "topfind";;
+ - : unit = ()
+ # #camlp4o;;
+	Camlp4 Parsing version 3.12.0
+
+ # #require "deriving-ocsigen.syntax";;
+ # type t = A of int | B of t deriving (Show);;
+ type t = A of int | B of t
+ module rec Show_t : sig ... end
+ # Show.show<t> (B (A 4));;
+ - : string = "B A 4"
+
+Examples with type-conv:
+========================
+
+ $ ocaml
+        Objective Caml version 3.12.0
+
+ # #use "topfind";;
+ - : unit = ()
+ # #camlp4o;;
+	Camlp4 Parsing version 3.12.0
+
+ # #require "type-conv";;
+ # #require "deriving-ocsigen.syntax_tc";;
+ # type t = A of int | B of t with show;;
+ type t = A of int | B of t
+ module rec Show_t : sig ... end
+
+Documention and examples of the original library:
+=================================================
+
+   http://code.google.com/p/deriving/wiki/Introduction
+   http://code.google.com/p/deriving/wiki/Classes
+

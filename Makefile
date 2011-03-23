@@ -33,20 +33,21 @@ tests:
 	./tests/tests
 
 include Makefile.filelist
+VERSION := $(shell head -n 1 VERSION)
 
 install:
 	${OCAMLFIND} install ${PROJECTNAME} \
-	  -patch-version `cat VERSION` \
+	  -patch-version ${VERSION} \
 	  META ${INTF} ${IMPL} ${NATIMPL}
 
 install-byte:
 	${OCAMLFIND} install ${PROJECTNAME} \
-	  -patch-version `cat VERSION` \
+	  -patch-version ${VERSION} \
 	  META ${INTF} ${IMPL}
 
 install-opt:
 	${OCAMLFIND} install ${PROJECTNAME} \
-	  -patch-version `cat VERSION` \
+	  -patch-version ${VERSION} \
 	  META ${INTF} ${NATIMPL}
 
 uninstall:
