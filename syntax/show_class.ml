@@ -52,6 +52,12 @@ module InContext (L : Loc) : Class = struct
       $e$;
       Format.pp_close_box formatter () >>
 
+  let in_paren e =
+    <:expr<
+      Format.pp_print_string formatter "(";
+      $e$;
+      Format.pp_print_string formatter ")" >>
+
   let in_hovbox ?(indent = 0) = in_a_box "pp_open_hovbox" indent
   and in_box ?(indent = 0) = in_a_box "pp_open_box" indent
 
@@ -70,7 +76,7 @@ module InContext (L : Loc) : Class = struct
 	            Format.pp_print_space formatter ();
 	            $format_expr id ty$>> in
 	  let exprs = format_expr id ty :: List.map2 format_expr' ids tys in
-	  in_hovbox ~indent:1 (seq_list exprs)
+          in_paren (in_hovbox ~indent:1 (seq_list exprs))
       | _ -> assert false
 
     method tuple ctxt args =

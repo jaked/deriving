@@ -73,7 +73,7 @@ module Show_option (S : Show) : Show with type a = S.a option =
               type a = S.a option
               let format formatter = function
                 | None   -> Format.fprintf formatter "@[None@]"
-                | Some s -> Format.fprintf formatter "@[Some@;<1 2>%a@]" S.format s
+                | Some s -> Format.fprintf formatter "@[Some@;<1 2>(%a)@]" S.format s
             end)
     
 (* instance Show a => Show (a array) *)
