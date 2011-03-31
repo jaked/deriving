@@ -88,7 +88,7 @@ module Show_array (S : Show) : Show with type a = S.a array =
                     done;
                     if length <> 0 then
                       S.format formatter (Array.get items (length -1));
-                in 
+                in
                   Format.fprintf formatter "@[[|%a|]@]" writeItems obj
             end)
 
@@ -109,11 +109,12 @@ Defaults(
                 K.format formatter key;
                 Format.pp_print_string formatter " => ";
                 V.format formatter value;
+                Format.fprintf formatter ";@;";
                 Format.pp_close_box formatter ();
              ) map;
       Format.pp_print_string formatter "}";
       Format.pp_close_box formatter ();
-      
+
   end)
 
 module Show_set
@@ -130,6 +131,7 @@ Defaults(
       S.iter (fun elt -> 
                 Format.pp_open_box formatter 0;
                 K.format formatter elt;
+                Format.fprintf formatter ";@;";
                 Format.pp_close_box formatter ();
              ) set;
       Format.pp_print_string formatter "}";
