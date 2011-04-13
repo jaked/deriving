@@ -1,7 +1,7 @@
 version = "dev"
 description = "Deriving (patched for the Ocsigen project)"
 
-requires        = "num,unix"
+requires        = "num"
 archive(byte)   = "deriving.cma"
 archive(native) = "deriving.cmxa"
 
