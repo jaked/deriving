@@ -90,7 +90,7 @@ deriving.opt: pa_deriving.cmxa
 
 ##
 
-VERSION := $(shell head -n 1 VERSION)
+VERSION := $(shell head -n 1 ../VERSION)
 id.ml: id.mlp ../Makefile.config ../VERSION
 	sed -e s/%%NAME%%/${PROJECTNAME}/ -e s/%%VERSION%%/${VERSION}/ $< > $@
 
