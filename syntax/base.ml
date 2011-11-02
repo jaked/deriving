@@ -11,10 +11,18 @@ open Camlp4.PreCast
 exception Underivable of string
 exception NoSuchClass of string
 
-(* display a fatal error and exit *)
-let error loc (msg : string) =
+
+let fatal_error loc msg =
   Syntax.print_warning loc msg;
   exit 1
+
+let display_errors loc f p =
+  try
+    f p
+  with
+    Underivable msg | Failure msg -> fatal_error loc msg
+
+(** ... *)
 
 let contains_tvars, contains_tvars_decl =
   let o = object
@@ -177,16 +185,21 @@ struct
   | Some name ->
       <:module_expr< $uid:runtimename$.$uid:name$($m$) >>
 
-  let import_depend ctxt ty depends =
-    let d = depends _loc in
+  let rdepends =
+    List.map
+      (fun d -> (module (val d : ClassDependency)(L) : RawClassDependency))
+      depends
+
+  let import_depend ctxt ty d =
     assert (ctxt.toplevel = None);
+    let module M = (val d : RawClassDependency) in
     let ctxt = { ctxt with toplevel = Some (classname, ty) } in
-    <:str_item< module $uid:d.d_classname$ = $d.d_generate_expr ctxt ty$ >>
+    <:str_item< module $uid:M.classname$ = $M.generate_expr ctxt ty$ >>
 
   let import_depends ctxt ty =
-    List.map (import_depend ctxt ty) depends
+    List.map (import_depend ctxt ty) rdepends
 
-  class virtual make_module_expr : generator =
+  class virtual make_module_expr =
   object (self)
 
     method wrap ctxt ty items =
@@ -260,7 +273,7 @@ struct
       | `Constr c   ->                   (self#constr     ctxt c)
       | `Tuple t    -> self#wrap ctxt ty (self#tuple      ctxt t)
 
-    method rhs ctxt (tname, params, rhs, constraints, _) : Ast.module_expr =
+    method rhs ctxt (tname, params, rhs, constraints, _ : Type.decl) : Ast.module_expr =
       let ty = `Constr([tname], List.map (fun p -> `Param p) params) in
       match rhs with
         | `Fresh (_, _, (`Private : [`Private|`Public])) when not allow_private ->
@@ -436,38 +449,37 @@ struct
 
 end
 
-
-type deriver = Loc.t * Type.decl list -> Ast.str_item
-and sigderiver = Loc.t * Type.decl list -> Ast.sig_item
-let derivers : (name, (deriver * sigderiver)) Hashtbl.t = Hashtbl.create 15
-let hashtbl_add = Hashtbl.add derivers
+let derivers = Hashtbl.create 15
+let hashtbl_add (desc, _ as deriver) =
+  let module Desc = (val desc : ClassDescription) in
+  Hashtbl.add derivers Desc.classname deriver
 let register_hook = ref [hashtbl_add]
 let add_register_hook f = register_hook := f :: !register_hook
-let register name derivers =
-  List.iter (fun f -> f name derivers) !register_hook
+let register desc deriver =
+  List.iter (fun f -> f (desc, deriver)) !register_hook
 let find classname =
   try Hashtbl.find derivers classname
   with Not_found -> raise (NoSuchClass classname)
-let is_registered : name -> bool =
-  fun classname -> try ignore (find classname); true with NoSuchClass _ -> false
+let is_registered classname = Hashtbl.mem derivers classname
+
+let derive_str _loc (decls : Type.decl list) (desc, class_builder) : Ast.str_item =
+  let module Loc = struct let _loc = _loc end in
+  let module Desc = (val desc : ClassDescription) in
+  let module ClassHelpers = InContext(Loc)(Desc) in
+  let module Class = (val class_builder : ClassBuilder)(ClassHelpers) in
+  display_errors _loc Class.generate decls
+
+let derive_sig _loc (decls : Type.decl list) (desc, class_builder) : Ast.sig_item =
+  let module Loc = struct let _loc = _loc end in
+  let module Desc = (val desc : ClassDescription) in
+  let module ClassHelpers = InContext(Loc)(Desc) in
+  let module Class = (val class_builder : ClassBuilder)(ClassHelpers) in
+  display_errors _loc Class.generate_sigs decls
 
 module Register
     (Desc : ClassDescription)
-    (MakeClass : functor(L : Loc) -> Class) = struct
+    (MakeClass : ClassBuilder) = struct
 
-  let generate (loc, decls) =
-    let module Class = MakeClass(struct let _loc = loc end) in
-    Class.generate decls
-
-  let generate_sigs (loc, decls) =
-    let module Class = MakeClass(struct let _loc = loc end) in
-    Class.generate_sigs decls
-
-  let depends loc =
-    let module Class = MakeClass(struct let _loc = loc end) in
-    { d_classname = Desc.classname;
-      d_generate_expr = Class.generate_expr }
-
-  let _ = register Desc.classname (generate, generate_sigs)
+ let _ = register (module Desc : ClassDescription) (module MakeClass : ClassBuilder)
 
 end

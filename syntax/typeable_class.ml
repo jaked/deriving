@@ -30,7 +30,7 @@ module Description : ClassDescription = struct
   let depends = []
 end
 
-module InContext (L : Loc) : Class = struct
+module InContext (L : Loc) = struct
 
   open Pa_deriving_common.Base
   open Pa_deriving_common.Utils
@@ -40,7 +40,8 @@ module InContext (L : Loc) : Class = struct
   open L
   module Helpers = Pa_deriving_common.Base.InContext(L)(Description)
   open Helpers
-  open Description
+
+  include Description
 
   let mkName tname =
     let file_name, sl, _, _, _, _, _, _ = Loc.to_tuple _loc in
@@ -94,3 +95,4 @@ module InContext (L : Loc) : Class = struct
 end
 
 module Typeable = Pa_deriving_common.Base.Register(Description)(InContext)
+let depends = (module InContext : ClassDependency)

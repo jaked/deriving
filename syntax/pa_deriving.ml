@@ -1,4 +1,5 @@
 (* Copyright Jeremy Yallop 2007.
+   Copyright Grégoire Henry 2011.
    This file is free software, distributed under the MIT license.
    See the file COPYING for details.
 *)
@@ -27,20 +28,29 @@ struct
   str_item:
   [[ "type"; types = type_declaration -> <:str_item< type $types$ >>
     | "type"; types = type_declaration; "deriving"; "("; cl = LIST0 [x = UIDENT -> x] SEP ","; ")" ->
-        let decls = display_errors _loc Translate.decls types in
-        let module U = Untranslate(struct let _loc = _loc end) in
-        let tdecls = List.map U.decl decls in
-          <:str_item< type $list:tdecls$ $list:List.map (derive_str _loc decls) cl$ >>
+       try
+	 let decls = display_errors _loc Translate.decls types in
+         let module U = Untranslate(struct let _loc = _loc end) in
+	 let cl = List.map find cl in
+         let tdecls = List.map U.decl decls in
+         <:str_item< type $list:tdecls$ $list:List.map (derive_str _loc decls) cl$ >>
+       with NoSuchClass classname ->
+	 fatal_error _loc ("deriving: " ^ classname ^ " is not a known `class'")
    ]]
   ;
   sig_item:
   [[ "type"; types = type_declaration -> <:sig_item< type $types$ >>
    | "type"; types = type_declaration; "deriving"; "("; cl = LIST0 [x = UIDENT -> x] SEP "," ; ")" ->
-       let decls  = display_errors _loc Translate.decls types in
-       let module U = Untranslate(struct let _loc = _loc end) in
-       let tdecls = List.concat_map U.sigdecl decls in
-       let ms = List.map (derive_sig _loc decls) cl in
-         <:sig_item< type $list:tdecls$ $list:ms$ >> ]]
+       try
+	 let decls  = display_errors _loc Translate.decls types in
+	 let module U = Untranslate(struct let _loc = _loc end) in
+	 let tdecls = List.concat_map U.sigdecl decls in
+	 let cl = List.map find cl in
+	 let ms = List.map (derive_sig _loc decls) cl in
+         <:sig_item< type $list:tdecls$ $list:ms$ >>
+       with NoSuchClass classname ->
+	 fatal_error _loc ("deriving: " ^ classname ^ " is not a known `class'")
+]]
   ;
   END
 

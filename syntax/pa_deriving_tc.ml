@@ -7,18 +7,22 @@
 
 open Camlp4.PreCast
 
-open Pa_deriving_common.Base
-open Pa_deriving_common.Type
-open Pa_deriving_common.Extend
+open Pa_deriving_common
 
-let derive deriver types =
-  let loc = Ast.loc_of_ctyp types in
-  let decls = display_errors loc Translate.decls types in
-  display_errors loc deriver (loc, decls)
+let translate_str deriver types =
+  let _loc = Ast.loc_of_ctyp types in
+  let decls = Base.display_errors _loc Type.Translate.decls types in
+  Base.derive_str _loc decls deriver
 
-let register name (deriver, sigderiver) =
-  let name = String.uncapitalize name in
-  Pa_type_conv.add_generator name (derive deriver);
-  Pa_type_conv.add_sig_generator name (derive sigderiver)
+let translate_sig deriver types =
+  let _loc = Ast.loc_of_ctyp types in
+  let decls = Base.display_errors _loc Type.Translate.decls types in
+  Base.derive_sig _loc decls deriver
 
-let _ = add_register_hook register
+let register (desc, _ as class_) =
+  let module Desc = (val desc : Defs.ClassDescription) in
+  let name = String.uncapitalize Desc.classname in
+  Pa_type_conv.add_generator name (translate_str class_);
+  Pa_type_conv.add_sig_generator name (translate_sig class_)
+
+let _ = Base.add_register_hook register

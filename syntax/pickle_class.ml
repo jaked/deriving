@@ -27,7 +27,7 @@ module Description : ClassDescription = struct
     ["ref"], "ref";
     ["option"], "option";
   ]
-  let depends = [Typeable_class.Typeable.depends; Eq_class.Eq.depends]
+  let depends = [Typeable_class.depends; Eq_class.depends]
 end
 
 module InContext (L : Loc) : Class = struct

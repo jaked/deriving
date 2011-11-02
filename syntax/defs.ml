@@ -1,5 +1,4 @@
 
-open Type
 open Camlp4.PreCast
 
 type context = {
@@ -17,63 +16,27 @@ module type Loc = sig
   val _loc : Loc.t (* location of the type definition being derived *)
 end
 
-type dependency = {
-    d_classname: string;
-    d_generate_expr: context -> Type.expr -> Ast.module_expr;
-  }
-
-module type ClassDescription = sig
-  val classname: name
-  val runtimename: name
-  val default_module: name option
-  val allow_private: bool
-  val predefs: (Type.qname * Type.name) list
-  val depends:  (Loc.t -> dependency) list
-end
-
 module type Class = sig
   val generate: Type.decl list -> Ast.str_item
   val generate_sigs: Type.decl list -> Ast.sig_item
+end
+
+module type RawClassDependency = sig
+  val classname: Type.name
+  val runtimename: Type.name
   val generate_expr: context -> Type.expr -> Ast.module_expr
 end
 
-class type virtual generator = object
+module type ClassDependency = functor (L: Loc) -> RawClassDependency
 
-      method rhs: context -> Type.decl -> Ast.module_expr
-      method expr: context -> Type.expr -> Ast.module_expr
-
-      method mapply: context -> Ast.module_expr -> Type.expr list -> Ast.module_expr
-
-      method constr: context -> Type.qname * Type.expr list -> Ast.module_expr
-      method param: context -> Type.param -> Ast.module_expr
-
-      method wrap: context -> Type.expr -> Ast.str_item list -> Ast.module_expr
-
-      method call_expr: context -> Type.expr -> string -> Ast.expr
-
-      method virtual sum:
-	  ?eq:Type.expr -> context ->
-	    Type.name -> Type.param list -> Type.constraint_ list ->
-	      Type.summand list -> Ast.str_item list
-      method virtual tuple: context -> Type.expr list -> Ast.str_item list
-      method virtual variant:
-	  context ->
-	    Type.name -> Type.param list -> Type.constraint_ list ->
-	      Type.variant -> Ast.str_item list
-      method virtual record:
-	  ?eq:Type.expr -> context ->
-	    Type.name -> Type.param list -> Type.constraint_ list ->
-	      Type.field list -> Ast.str_item list
-
-      method class_: context -> [ `NYI ] -> Ast.str_item list
-      method function_: context -> Type.expr * Type.expr -> Ast.str_item list
-      method label:
-          context ->
-	    [ `NonOptional | `Optional ] * Type.name * Type.expr * Type.expr ->
-	      Ast.str_item list
-      method object_: context -> [ `NYI ] -> Ast.str_item list
-
-    end
+module type ClassDescription = sig
+  val classname: Type.name
+  val runtimename: Type.name
+  val default_module: Type.name option
+  val allow_private: bool
+  val predefs: (Type.qname * Type.name) list
+  val depends: (module ClassDependency) list
+end
 
 module type ClassHelpers = sig
 
@@ -105,16 +68,74 @@ module type ClassHelpers = sig
   (* For Pickle only *)
   val instantiate_modargs_repr: Type.name Type.NameMap.t -> Type.repr -> Type.repr
 
-  class virtual make_module_expr : generator
-  val make_module_sig: context -> Type.decl -> Ast.module_type
-  val make_module_type: context -> Type.decl -> Ast.module_type
+  class virtual make_module_expr : object
 
-  val default_generate:
-      make_module_expr:(context -> Type.decl -> Ast.module_expr) ->
-      make_module_type:(context -> Type.decl -> Ast.module_type) ->
-	Type.decl list -> Ast.str_item
+    method rhs: context -> Type.decl -> Ast.module_expr
+    method expr: context -> Type.expr -> Ast.module_expr
+
+    method mapply: context -> Ast.module_expr -> Type.expr list -> Ast.module_expr
+
+    method constr: context -> Type.qname * Type.expr list -> Ast.module_expr
+    method param: context -> Type.param -> Ast.module_expr
+
+    method wrap: context -> Type.expr -> Ast.str_item list -> Ast.module_expr
+
+    method call_expr: context -> Type.expr -> string -> Ast.expr
+
+    method virtual sum:
+	?eq:Type.expr -> context ->
+	  Type.name -> Type.param list -> Type.constraint_ list ->
+	    Type.summand list -> Ast.str_item list
+    method virtual tuple: context -> Type.expr list -> Ast.str_item list
+    method virtual variant:
+	context ->
+	  Type.name -> Type.param list -> Type.constraint_ list ->
+	    Type.variant -> Ast.str_item list
+    method virtual record:
+	?eq:Type.expr -> context ->
+	  Type.name -> Type.param list -> Type.constraint_ list ->
+	    Type.field list -> Ast.str_item list
+
+    method class_: context -> [ `NYI ] -> Ast.str_item list
+    method function_: context -> Type.expr * Type.expr -> Ast.str_item list
+    method label:
+      context ->
+	[ `NonOptional | `Optional ] * Type.name * Type.expr * Type.expr ->
+	  Ast.str_item list
+    method object_: context -> [ `NYI ] -> Ast.str_item list
+
+  end
+
+  val default_generate :
+    make_module_expr:(context ->
+                      Type.name * Type.param list * Type.rhs *
+                        Type.constraint_ list * bool ->
+                      Ast.module_expr) ->
+    make_module_type:(context ->
+                      Type.name * Type.param list * Type.rhs *
+                        Type.constraint_ list * bool ->
+                      Ast.module_type) ->
+    Type.decl list -> Ast.str_item
+
+  val make_module_type:
+    context ->
+    Type.name * (Type.NameMap.key * 'a) list *
+      [< `Expr of Type.expr | `Fresh of 'b | `Nothing | `Variant of 'c ] *
+      'd * 'e -> Ast.module_type
+
   val default_generate_sigs:
-      make_module_sig:(context -> Type.decl -> Ast.module_type) ->
-	Type.decl list -> Ast.sig_item
+           make_module_sig:(context ->
+                            Type.name * Type.param list * Type.rhs *
+                            Type.constraint_ list * bool ->
+                            Ast.module_type) ->
+           Type.decl list -> Ast.sig_item
+
+  val make_module_sig:
+           context ->
+           Type.name * (Type.NameMap.key * 'a) list *
+           [< `Expr of Type.expr | `Fresh of 'b | `Nothing | `Variant of 'c ] *
+           'd * 'e -> Ast.module_type
 
 end
+
+module type ClassBuilder = functor (B : ClassHelpers) -> Class
