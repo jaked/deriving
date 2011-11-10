@@ -142,35 +142,58 @@ struct
     | TyAnt (_, s) -> "TyAnt("^s^")"
 end
 
-module StringMap =
-struct
-  include Map.Make(String)
-  exception NotFound of string
-  let find s m =
-    try find s m
-    with Not_found -> raise (NotFound s)
-  let fromList : (key * 'a) list -> 'a t = fun elems ->
-    List.fold_right (F.uncurry add) elems empty
-  let union_disjoint2 l r =
-    fold
-      (fun k v r ->
-         if mem k r then invalid_arg "union_disjoint"
-         else add k v r) l r
-  let union_disjoint maps = List.fold_right union_disjoint2 maps empty
+module Map = struct
+
+  module type OrderedType = Map.OrderedType
+
+  module type S = sig
+    include Map.S
+    exception Not_found of key
+    val fromList : (key * 'a) list -> 'a t
+    val union_disjoint : 'a t list -> 'a t
+    val union_disjoint2 : 'a t -> 'a t -> 'a t
+  end
+
+  module Make(Ord: OrderedType) = struct
+
+    let nf = Not_found
+    exception Not_found of Ord.t
+
+    include Map.Make(Ord)
+
+    let find s m =
+      try find s m
+      with e when e = nf -> raise (Not_found s)
+
+    let fromList : (key * 'a) list -> 'a t = fun elems ->
+      List.fold_right (F.uncurry add) elems empty
+
+    let union_disjoint2 l r =
+      fold
+	(fun k v r ->
+           if mem k r then invalid_arg "union_disjoint"
+           else add k v r) l r
+
+    let union_disjoint maps = List.fold_right union_disjoint2 maps empty
+
+  end
+
 end
 
-module Set =
-struct
+module Set = struct
+
   module type OrderedType = Set.OrderedType
+
   module type S = sig
     include Set.S
     val fromList : elt list -> t
   end
-  module Make (Ord : OrderedType) =
-  struct
+
+  module Make (Ord : OrderedType) = struct
     include Set.Make(Ord)
     let fromList elems = List.fold_right add elems empty
   end
+
 end
 
 let random_id length =

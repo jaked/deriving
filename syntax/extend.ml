@@ -28,8 +28,7 @@ let instantiate _loc t classname =
   with Base.NoSuchClass classname ->
     Base.fatal_error _loc ("deriving: " ^ classname ^ " is not a known `class'")
 
-module Deriving (S : Camlp4.Sig.Camlp4Syntax) =
-struct
+module Deriving (S : Camlp4.Sig.Camlp4Syntax) = struct
 
   include Syntax
 

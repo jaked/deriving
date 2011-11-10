@@ -139,3 +139,4 @@ module type ClassHelpers = sig
 end
 
 module type ClassBuilder = functor (B : ClassHelpers) -> Class
+type generator = (module ClassDescription) * (module ClassBuilder)

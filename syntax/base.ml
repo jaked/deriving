@@ -449,18 +449,18 @@ struct
 
 end
 
-let derivers = Hashtbl.create 15
+let generators = Hashtbl.create 15
 let hashtbl_add (desc, _ as deriver) =
   let module Desc = (val desc : ClassDescription) in
-  Hashtbl.add derivers Desc.classname deriver
+  Hashtbl.add generators Desc.classname deriver
 let register_hook = ref [hashtbl_add]
 let add_register_hook f = register_hook := f :: !register_hook
-let register desc deriver =
+let register (desc, deriver) =
   List.iter (fun f -> f (desc, deriver)) !register_hook
 let find classname =
-  try Hashtbl.find derivers classname
+  try Hashtbl.find generators classname
   with Not_found -> raise (NoSuchClass classname)
-let is_registered classname = Hashtbl.mem derivers classname
+let is_registered classname = Hashtbl.mem generators classname
 
 let derive_str _loc (decls : Type.decl list) (desc, class_builder) : Ast.str_item =
   let module Loc = struct let _loc = _loc end in
@@ -480,6 +480,6 @@ module Register
     (Desc : ClassDescription)
     (MakeClass : ClassBuilder) = struct
 
- let _ = register (module Desc : ClassDescription) (module MakeClass : ClassBuilder)
+ let _ = register ((module Desc : ClassDescription), (module MakeClass : ClassBuilder))
 
 end

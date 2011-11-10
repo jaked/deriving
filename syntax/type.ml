@@ -3,15 +3,12 @@
    See the file COPYING for details.
 *)
 
-(* More convenient representation for types, and translation from the
-   Camlp4 representation *)
-
 open Utils
 
 (* auxiliary definitions *)
 type name = string
 type qname = name list
-module NameMap = StringMap
+module NameMap = Map.Make(String)
 module NameSet = Set.Make(String)
 
 type param = name * [`Plus | `Minus] option
