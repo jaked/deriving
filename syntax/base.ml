@@ -41,7 +41,7 @@ struct
   open D
 
   let instantiate, instantiate_repr =
-    let o lookup = object 
+    let o lookup = object
       inherit transform as super
       method expr = function
         | `Param (name, _) -> lookup name
@@ -51,8 +51,8 @@ struct
       (fun (lookup : name -> expr) -> (o lookup)#repr)
 
   let instantiate_modargs, instantiate_modargs_repr =
-    let lookup argmap var = 
-      try 
+    let lookup argmap var =
+      try
         `Constr ([NameMap.find var argmap; "a"], [])
       with Not_found ->
         failwith ("Unbound type parameter '" ^ var)
@@ -63,22 +63,22 @@ struct
     (object
        inherit transform as default
        method expr = function
-         | `Param (p,v) when NameMap.mem p env -> 
+         | `Param (p,v) when NameMap.mem p env ->
              `Param (NameMap.find p env,v)
          | e -> default# expr e
      end) # expr
 
-  let cast_pattern argmap ?(param="x") t = 
+  let cast_pattern argmap ?(param="x") t =
     let t = Untranslate.expr (instantiate_modargs argmap t) in
       (<:patt< $lid:param$ >>,
        <:expr<
-         let module M = 
+         let module M =
              struct
                type $Ast.TyDcl (_loc, "t", [], t, [])$
                let test = function #t -> true | _ -> false
              end in M.test $lid:param$ >>,
        <:expr<
-         (let module M = 
+         (let module M =
               struct
                 type $Ast.TyDcl (_loc, "t", [], t, [])$
                 let cast = function #t as t -> t | _ -> assert false
@@ -90,29 +90,29 @@ struct
     | [e] -> e
     | e::es -> seq e (seq_list es)
 
-  let record_pattern ?(prefix="") (fields : Type.field list) : Ast.patt = 
+  let record_pattern ?(prefix="") (fields : Type.field list) : Ast.patt =
     <:patt<{$list:
-              (List.map (fun (label,_,_) -> <:patt< $lid:label$ = $lid:prefix ^ label$ >>) 
+              (List.map (fun (label,_,_) -> <:patt< $lid:label$ = $lid:prefix ^ label$ >>)
                       fields) $}>>
 
-  let record_expr : (string * Ast.expr) list -> Ast.expr = 
+  let record_expr : (string * Ast.expr) list -> Ast.expr =
     fun fields ->
-      let fs = 
-      List.fold_left1 
+      let fs =
+      List.fold_left1
         (fun l r -> <:rec_binding< $l$ ; $r$ >>)
-        (List.map (fun (label, exp) -> <:rec_binding< $lid:label$ = $exp$ >>) 
+        (List.map (fun (label, exp) -> <:rec_binding< $lid:label$ = $exp$ >>)
            fields) in
         Ast.ExRec (_loc, fs, Ast.ExNil _loc)
 
-  let record_expression ?(prefix="") : Type.field list -> Ast.expr = 
+  let record_expression ?(prefix="") : Type.field list -> Ast.expr =
     fun fields ->
       let es = List.fold_left1
         (fun l r -> <:rec_binding< $l$ ; $r$ >>)
-        (List.map (fun (label,_,_) -> <:rec_binding< $lid:label$ = $lid:prefix ^ label$ >>) 
+        (List.map (fun (label,_,_) -> <:rec_binding< $lid:label$ = $lid:prefix ^ label$ >>)
            fields) in
         Ast.ExRec (_loc, es, Ast.ExNil _loc)
 
-  let mproject mexpr name = 
+  let mproject mexpr name =
     match mexpr with
       | <:module_expr< $id:m$ >> -> <:expr< $id:m$.$lid:name$ >>
       | _ -> <:expr< let module M = $mexpr$ in M.$lid:name$ >>
@@ -122,16 +122,16 @@ struct
       | <:module_expr< $uid:m$ >> -> <:module_expr< $uid:m$.$uid:name$ >>
       | _ -> <:module_expr< struct module M = $mexpr$ include M.$uid:name$ end >>
 
-  let expr_list : Ast.expr list -> Ast.expr = 
+  let expr_list : Ast.expr list -> Ast.expr =
       (fun exprs ->
-         List.fold_right 
+         List.fold_right
            (fun car cdr -> <:expr< $car$ :: $cdr$ >>)
            exprs
          <:expr< [] >>)
 
-  let patt_list : Ast.patt list -> Ast.patt = 
+  let patt_list : Ast.patt list -> Ast.patt =
       (fun patts ->
-         List.fold_right 
+         List.fold_right
            (fun car cdr -> <:patt< $car$ :: $cdr$ >>)
            patts
          <:patt< [] >>)
@@ -146,11 +146,11 @@ struct
       match n with
         | 0 -> [], <:patt< () >>, <:expr< () >>
         | 1 -> [v 0], <:patt< $lid:v 0$ >>, <:expr< $lid:v 0$ >>
-        | n -> 
-            let patts, exprs = 
+        | n ->
+            let patts, exprs =
               (* At time of writing I haven't managed to write anything
                  using quotations that generates an n-tuple *)
-              List.fold_left 
+              List.fold_left
                 (fun (p, e) (patt, expr) -> Ast.PaCom (_loc, p, patt), Ast.ExCom (_loc, e, expr))
                 (<:patt< >>, <:expr< >>)
                 (List.map (fun n -> <:patt< $lid:v n$ >>, <:expr< $lid:v n $ >>)
@@ -159,7 +159,7 @@ struct
               List.map v (List.range 0 n), Ast.PaTup (_loc, patts), Ast.ExTup (_loc, exprs)
 
   let rec modname_from_qname ~qname ~classname =
-    match qname with 
+    match qname with
       | [] -> invalid_arg "modname_from_qname"
       | [t] -> <:ident< $uid:classname ^ "_"^ t$ >>
       | t::ts -> <:ident< $uid:t$.$modname_from_qname ~qname:ts ~classname$ >>
@@ -292,9 +292,9 @@ struct
 
   let make_safe (decls : (decl * Ast.module_binding) list) : Ast.module_binding list =
     (* re-order a set of mutually recursive modules in an attempt to
-       make initialization problems less likely *) 
+       make initialization problems less likely *)
     List.map snd
-      (List.sort 
+      (List.sort
          (fun ((_,_,lrhs,_,_), _) ((_,_,rrhs,_,_), _) -> match (lrhs : rhs), rrhs with
             (* aliases to types in the group score higher than
                everything else.
@@ -308,10 +308,10 @@ struct
             | (`Nothing, `Nothing) -> 0
             | (`Nothing, _) -> 1
             | (_, `Nothing) -> -1
-            | `Expr l, `Expr r -> 
-                let module M = 
+            | `Expr l, `Expr r ->
+                let module M =
                     struct
-                      type low = 
+                      type low =
                           [`Param of param
                           |`Tuple of expr list]
                     end in
@@ -323,11 +323,11 @@ struct
 
   let find_non_regular params tnames decls : name list =
     List.concat_map
-      (object 
+      (object
 	inherit [name list] fold as default
 	method crush = List.concat
 	method expr = function
-          | `Constr ([t], args) 
+          | `Constr ([t], args)
             when NameSet.mem t tnames ->
               (List.concat_map2
                  (fun (p,_) a -> match a with
@@ -338,45 +338,45 @@ struct
           | e -> default#expr e
       end)#decl decls
 
-  let extract_params = 
+  let extract_params =
     let has_params params (_, ps, _, _, _) = ps = params in
     function
       | [] -> invalid_arg "extract_params"
       | (_,params,_,_,_)::rest
         when List.for_all (has_params params) rest ->
           params
-      | (_,_,rhs,_,_)::_ -> 
+      | (_,_,rhs,_,_)::_ ->
           (* all types in a clique must have the same parameters *)
           raise (Underivable ("Instances can only be derived for "
                               ^"recursive groups where all types\n"
                               ^"in the group have the same parameters."))
 
   let setup_context (tdecls : decl list) : context =
-    let params = extract_params tdecls 
+    let params = extract_params tdecls
     and tnames = NameSet.fromList (List.map (fun (name,_,_,_,_) -> name) tdecls) in
     match find_non_regular params tnames tdecls with
-    | _::_ as names -> 
+    | _::_ as names ->
         failwith ("The following types contain non-regular recursion:\n   "
                   ^String.concat ", " names
                   ^"\nderiving does not support non-regular types")
     | [] ->
-        let argmap = 
+        let argmap =
           List.fold_right
             (fun (p,_) m -> NameMap.add p (Printf.sprintf "V_%s" p) m)
             params
-            NameMap.empty in 
+            NameMap.empty in
         { argmap = argmap;
-          params = params; 
+          params = params;
           tnames = tnames;
 	  toplevel = None;
 	}
 
   let default_generate ~make_module_expr ~make_module_type decls =
-    (* plan: 
+    (* plan:
        set up an enclosing recursive module
        generate functors for all types in the clique
        project out the inner modules afterwards.
-       
+
        later: generate simpler code for simpler cases:
        - where there are no type parameters
        - where there's only one type
@@ -385,17 +385,17 @@ struct
     *)
     let context = setup_context decls in
     let wrapper_name = Printf.sprintf "%s_%s" classname (random_id 32)  in
-    let make_functor = 
-      List.fold_right 
-        (fun (p,_) rhs -> 
+    let make_functor =
+      List.fold_right
+        (fun (p,_) rhs ->
            let arg = NameMap.find p context.argmap in
              <:module_expr< functor ($arg$ : $uid:runtimename$.$uid:classname$) -> $rhs$ >>)
         context.params in
     let mbinds =
-      List.map 
-        (fun (name,_,_,_,_ as decl) -> 
+      List.map
+        (fun (name,_,_,_,_ as decl) ->
              (decl,
-              <:module_binding< 
+              <:module_binding<
                 $uid:classname ^ "_"^ name$
                 : $make_module_type context decl$
                = $make_module_expr context decl$ >>))
@@ -407,11 +407,11 @@ struct
         | [] -> mrec
         | _ ->
            let fixed = make_functor <:module_expr< struct $mrec$ end >> in
-           let applied = apply_functor <:module_expr< $uid:wrapper_name$ >> 
-                                       (List.map (fun (p,_) -> <:module_expr< $uid:NameMap.find p context.argmap$>>) 
+           let applied = apply_functor <:module_expr< $uid:wrapper_name$ >>
+                                       (List.map (fun (p,_) -> <:module_expr< $uid:NameMap.find p context.argmap$>>)
                                              context.params) in
            let projected =
-             List.map (fun (name,params,rhs,_,_) -> 
+             List.map (fun (name,params,rhs,_,_) ->
                          let modname = classname ^ "_"^ name in
                          let rhs = <:module_expr< struct module P = $applied$ include P.$uid:modname$ end >> in
                            <:str_item< module $uid:modname$ = $make_functor rhs$>>)

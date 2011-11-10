@@ -81,20 +81,20 @@ struct
   let rec polycase context = function
     | Tag (name, []) -> <:match_case< `$name$ -> `$name$ >>
     | Tag (name, es) -> <:match_case< `$name$ x -> `$name$ ($expr context (`Tuple es)$ x) >>
-    | Extends t -> 
+    | Extends t ->
         let patt, guard, exp = cast_pattern context.argmap t in
           <:match_case< $patt$ when $guard$ -> $expr context t$ $exp$ >>
 
   and expr context : Pa_deriving_common.Type.expr -> Ast.expr = function
     | t when not (contains_tvars t) -> <:expr< fun x -> x >>
     | `Param (p,_) -> <:expr< $lid:NameMap.find p (param_map context)$ >>
-    | `Function (f,t) when not (contains_tvars t) -> 
+    | `Function (f,t) when not (contains_tvars t) ->
         <:expr< fun f x -> f ($expr context f$ x) >>
     | `Constr (qname, ts) ->
 	let qname =
 	  try [runtimename ; List.assoc qname predefs]
 	  with Not_found -> qname in
-        List.fold_left 
+        List.fold_left
           (fun fn arg -> <:expr< $fn$ $expr context arg$ >>)
           <:expr< $id:modname_from_qname ~qname ~classname$.map >>
           ts
@@ -104,9 +104,9 @@ struct
   and tup context = function
     | [t] -> expr context t
     | ts ->
-        let args, exps = 
+        let args, exps =
           (List.fold_right2
-             (fun t n (p,e) -> 
+             (fun t n (p,e) ->
                 let v = Printf.sprintf "t%d" n in
                   Ast.PaCom (_loc, <:patt< $lid:v$ >>, p),
                   Ast.ExCom (_loc, <:expr< $expr context t$ $lid:v$ >>, e))
@@ -118,8 +118,8 @@ struct
 
   and case context = function
     | (name, []) -> <:match_case< $uid:name$ -> $uid:name$ >>
-    | (name, args) -> 
-        let f = tup context args 
+    | (name, args) ->
+        let f = tup context args
         and _, tpatt, texp = tuple (List.length args) in
           <:match_case< $uid:name$ $tpatt$ -> let $tpatt$ = ($f$ $texp$) in $uid:name$ ($texp$) >>
 
@@ -128,13 +128,13 @@ struct
 
   let rhs context = function
     |`Fresh (_, _, `Private) -> raise (Underivable "Functor cannot be derived for private types")
-    |`Fresh (_, Sum summands, _)  -> 
+    |`Fresh (_, Sum summands, _)  ->
        <:expr<  function $list:List.map (case context) summands$ >>
-    |`Fresh (_, Record fields, _) -> 
-       <:expr< fun $record_pattern fields$ -> 
+    |`Fresh (_, Record fields, _) ->
+       <:expr< fun $record_pattern fields$ ->
                    $record_expr (List.map (fun ((l,_,_) as f) -> (l,field context f)) fields)$ >>
     |`Expr e                  -> expr context e
-    |`Variant (_, tags) -> 
+    |`Variant (_, tags) ->
        <:expr< function $list:List.map (polycase context) tags$ | _ -> assert false >>
     | `Nothing -> raise (Underivable "Cannot generate functor instance for the empty type")
 
@@ -144,14 +144,14 @@ struct
     let ctor_in = `Constr ([name], List.map (fun p -> `Param p) context.params) in
     let ctor_out = substitute param_map ctor_in  (* c[f_i/a_i] *) in
       List.fold_right (* (a_i -> f_i) -> ... -> c[a_i] -> c[f_i/a_i] *)
-        (fun (p,_) out -> 
+        (fun (p,_) out ->
            (<:ctyp< ('$lid:p$ -> '$lid:NameMap.find p param_map$) -> $out$>>))
         context.params
         (Untranslate.expr (`Function (ctor_in, ctor_out)))
 
-   let signature context name : Ast.sig_item list =  
-     [ <:sig_item< type $list:sigdec context name$ >>; 
-       <:sig_item< val map : $maptype context name$ >> ] 
+   let signature context name : Ast.sig_item list =
+     [ <:sig_item< type $list:sigdec context name$ >>;
+       <:sig_item< val map : $maptype context name$ >> ]
 
   let decl context (name, _, r, _, _) : Camlp4.PreCast.Ast.module_binding =
     if name = "f" then
@@ -163,7 +163,7 @@ struct
        : sig $list:signature context name$ end
        = $wrapper context name (rhs context r)$ >>
 
-  let gen_sig context (tname, params, _, _, generated) = 
+  let gen_sig context (tname, params, _, _, generated) =
     if tname = "f" then
       raise (Underivable ("deriving: Functor cannot be derived for types called `f'.\n"
                           ^"Please change the name of your type and try again."))

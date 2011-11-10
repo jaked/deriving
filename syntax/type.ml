@@ -20,11 +20,11 @@ type param = name * [`Plus | `Minus] option
 type decl = name * param list * rhs * constraint_ list
     (* whether the type was inserted by deriving *)
     * bool
-and rhs = [`Fresh of expr option * repr * [`Private|`Public] 
+and rhs = [`Fresh of expr option * repr * [`Private|`Public]
           |`Expr of expr
           |`Variant of variant
           |`Nothing]
-and repr = 
+and repr =
     Sum of summand list
   | Record of field list
 and field = name * poly_expr * [`Mutable | `Immutable]
@@ -46,7 +46,7 @@ and variant = [`Gt | `Lt | `Eq] * tagspec list
 and tagspec = Tag of name * expr list
               | Extends of expr
 
-class virtual ['result] fold = 
+class virtual ['result] fold =
 object (self : 'self)
   method virtual crush : 'result list -> 'result
 
@@ -62,30 +62,30 @@ object (self : 'self)
                   | `Expr e               -> [self#expr e]
                   | `Variant v            -> [self#variant v]
                   | `Nothing              -> [])
-                      
-      
+
+
   method repr r =
     self#crush (match r with
                     | Sum summands ->
                         List.map self#summand summands
                     | Record fields ->
                         List.map self#field fields)
-    
+
   method field (name, pexpr, flag) =
     self#crush [self#poly_expr pexpr]
-      
+
   method summand (_,es) =
     self#crush (List.map self#expr es)
 
   method constraint_ (e1,e2) =
     self#crush [self#expr e1; self#expr e2]
 
-  method expr e = 
+  method expr e =
     self#crush (match e with
                     `Param _
                   | `Object _
                   | `Class _ -> []
-                  | `Label (_, _, e1, e2) 
+                  | `Label (_, _, e1, e2)
                   | `Function (e1, e2) -> [self#expr e1; self#expr e2]
                   | `Constr (_, exprs)
                   | `Tuple exprs  -> List.map self#expr exprs)
@@ -102,14 +102,14 @@ object (self : 'self)
                   | Extends e -> [self#expr e])
 end
 
-class transform = 
+class transform =
 object (self : 'self)
 
   method decl (name, params, rhs, constraints,g:decl) : decl =
     (name, params, self#rhs rhs, List.map (self # constraint_) constraints, g)
 
   method rhs = function
-    | `Fresh (eopt, repr, p) -> `Fresh (Option.map (self # expr) eopt, 
+    | `Fresh (eopt, repr, p) -> `Fresh (Option.map (self # expr) eopt,
                                         self # repr repr, p)
     | `Expr e -> `Expr (self # expr e)
     | `Variant v -> `Variant (self # variant v)
@@ -121,8 +121,8 @@ object (self : 'self)
 
   method field (name, poly_expr, flag) =
     (name, self # poly_expr poly_expr, flag)
-    
-  method summand (name, exprs) = 
+
+  method summand (name, exprs) =
     (name, List.map (self # expr) exprs)
 
   method constraint_ (e1, e2) =
@@ -188,7 +188,7 @@ struct
     | Ast.TySta (_,l,r) -> Left (l,r)
     | t -> Right t
 
-  let list (one : Ast.ctyp -> 'a) (split : Ast.ctyp -> (Ast.ctyp * Ast.ctyp, Ast.ctyp) either) : Ast.ctyp -> 'a list = 
+  let list (one : Ast.ctyp -> 'a) (split : Ast.ctyp -> (Ast.ctyp * Ast.ctyp, Ast.ctyp) either) : Ast.ctyp -> 'a list =
     let rec aux = function
       | Ast.TyNil _ -> []
       | ctyp ->
@@ -214,10 +214,10 @@ struct
   type vmap = (name * variant * name option) list
 
   let fresh_name, set_name_prefix
-    = 
+    =
     let name_prefix = ref "" in
     let counter = ref 0 in
-      ((fun () -> 
+      ((fun () ->
         incr counter;
           "deriving_" ^ !name_prefix ^ "_" ^ string_of_int !counter),
        (fun name -> name_prefix := name; counter := 0))
@@ -226,7 +226,7 @@ struct
   struct
     include P
 
-    let apply_t name = 
+    let apply_t name =
       `Constr([name], List.map (fun p -> `Param p) params)
 
     let rec expr : Ast.ctyp -> expr * vmap  = function
@@ -238,7 +238,7 @@ struct
       | Ast.TySum _
       | Ast.TyRec _ -> failwith "deriving: top level element found nested"
       | Ast.TyAny _ -> failwith "deriving does not support `_' in type definitions"
-      | Ast.TyArr (_,f,t) -> 
+      | Ast.TyArr (_,f,t) ->
           let f, v1 = expr f and t,v2 = expr t in
             `Function (f, t), v1 @ v2
       | Ast.TyApp _ as app -> let app, v = application app in `Constr app, v
@@ -258,26 +258,26 @@ struct
       | e -> failwith ("unexpected type at expr : " ^ Utils.DumpAst.ctyp e)
     and tagspec = function
       | Ast.TyVrn (_,tag)                  -> Tag (tag, []), []
-      | Ast.TyOf (_, Ast.TyVrn (_,tag), t) -> 
-          let es, vs = List.split (list expr split_comma t) in 
+      | Ast.TyOf (_, Ast.TyVrn (_,tag), t) ->
+          let es, vs = List.split (list expr split_comma t) in
             Tag (tag, es), List.concat vs
       | t                                  -> let e, v = expr t in Extends e, v
     and application : Ast.ctyp -> (qname * expr list) * vmap = function
-      | Ast.TyApp (_, (Ast.TyApp _ as a), t) -> 
+      | Ast.TyApp (_, (Ast.TyApp _ as a), t) ->
           let (tcon, args), vs = application a in
           let e, vs' = expr t in
             (tcon, args @ [e]), vs @ vs'
-      | Ast.TyApp (_, (Ast.TyId (_, tcon)), t) -> 
+      | Ast.TyApp (_, (Ast.TyId (_, tcon)), t) ->
           let e, v = expr t in (qident tcon, [e]), v
       | _ -> assert false
-    and variant tags ?alias spec = 
+    and variant tags ?alias spec =
       let name = fresh_name () in
       let tags, vs = List.split (list tagspec split_or tags) in
-        (apply_t name, 
+        (apply_t name,
          [name, (spec, tags), alias] @ List.concat vs)
     let rec polyexpr : Ast.ctyp -> poly_expr * vmap = function
-      | Ast.TyPol (_, ps, t) -> 
-          begin match polyexpr t with 
+      | Ast.TyPol (_, ps, t) ->
+          begin match polyexpr t with
             | (ps',t'), [] -> (list param split_comma ps @ ps', t'), []
             |  _ -> failwith ("deriving does not support polymorphic variant "
                               ^"definitions within polymorphic record field types")
@@ -285,39 +285,39 @@ struct
       | t -> let e, v = expr t in ([], e), v
 
 
-    let field : Ast.ctyp -> field * vmap = function 
+    let field : Ast.ctyp -> field * vmap = function
       | Ast.TyCol (_, Ast.TyId (_,name), Ast.TyMut (_, t)) ->
           let p, v = polyexpr t in (ident name, p, `Mutable), v
       | Ast.TyCol (_, Ast.TyId (_,name), t) ->
           let p, v = polyexpr t in (ident name, p, `Immutable), v
       | _ -> assert false
 
-    let summand : Ast.ctyp -> summand * vmap = function 
+    let summand : Ast.ctyp -> summand * vmap = function
       | Ast.TyId (_, c)                  -> (ident c, []), []
-      | Ast.TyOf (_, Ast.TyId (_, c), t) -> 
+      | Ast.TyOf (_, Ast.TyId (_, c), t) ->
           let es, vs = List.split (list expr split_and t) in (ident c, es), List.concat vs
       | _                                -> assert false
 
     let rec repr = function
-      | Ast.TyRec (loc, fields) -> 
-          let fields, vs = List.split (list field split_semi fields) in 
+      | Ast.TyRec (loc, fields) ->
+          let fields, vs = List.split (list field split_semi fields) in
             Record fields, List.concat vs
-      | Ast.TySum (loc, summands) -> 
+      | Ast.TySum (loc, summands) ->
           let summands, vs = List.split (list summand split_or summands) in
             Sum summands, List.concat vs
       | e -> failwith ("deriving: unexpected representation type ("^Utils.DumpAst.ctyp e^")")
 
     let toplevel : Ast.ctyp -> rhs * vmap  = function
-      | Ast.TyPrv (_, (Ast.TyRec _ | Ast.TySum _ as r)) -> 
+      | Ast.TyPrv (_, (Ast.TyRec _ | Ast.TySum _ as r)) ->
           let repr, vs = repr r in `Fresh (None, repr, `Private), vs
-      | Ast.TyRec _ | Ast.TySum _ as r -> 
+      | Ast.TyRec _ | Ast.TySum _ as r ->
           let repr, vs = repr r in `Fresh (None, repr, `Public), vs
-      | Ast.TyVrnEq (_, t)  -> 
+      | Ast.TyVrnEq (_, t)  ->
           let es, vs = List.split (list tagspec split_or t) in
             `Variant (`Eq, es), List.concat vs
       | Ast.TyVrnSup (_, t) ->
           let es, vs = List.split (list tagspec split_or t) in
-            `Variant (`Gt, es), List.concat vs 
+            `Variant (`Gt, es), List.concat vs
       | Ast.TyVrnInf (_, t) ->
           let es, vs = List.split (list tagspec split_or t) in
             `Variant (`Lt, es), List.concat vs
@@ -325,25 +325,25 @@ struct
       | Ast.TyNil _ -> `Nothing, []
       | Ast.TyPrv _ -> failwith "deriving does not currently support private rows"
       | Ast.TyMan (_, eq, (Ast.TyRec _ | Ast.TySum _ as r)) ->
-          let repr, v1 = repr r and ex, v2 = expr eq in 
+          let repr, v1 = repr r and ex, v2 = expr eq in
             `Fresh (Some ex, repr, `Public), v1 @ v2
       | Ast.TyMan (_, eq, Ast.TyPrv (_, (Ast.TyRec _ | Ast.TySum _ as r))) ->
-          let repr, v1 = repr r and ex, v2 = expr eq in 
+          let repr, v1 = repr r and ex, v2 = expr eq in
             `Fresh (Some ex, repr, `Private), v1 @ v2
       | t -> let e, v = expr t in `Expr e, v
 
-    let constraints : (Ast.ctyp * Ast.ctyp) list -> constraint_ list * vmap = 
+    let constraints : (Ast.ctyp * Ast.ctyp) list -> constraint_ list * vmap =
       fun cs ->
         List.fold_right
-          (fun (c1,c2) (es,vs) -> 
-             let e1,v1 = expr c1 
+          (fun (c1,c2) (es,vs) ->
+             let e1,v1 = expr c1
              and e2,v2 = expr c2
              in ((e1,e2)::es), (v1 @ v2 @ vs))
           cs
           ([],[])
 
-    let declify = 
-      let declify1 (name, variant, alias) : decl * (name * expr) option = 
+    let declify =
+      let declify1 (name, variant, alias) : decl * (name * expr) option =
         (name, params, `Variant variant, [], true), Option.map (fun a -> a, apply_t name) alias in
         List.map declify1
   end
@@ -357,7 +357,7 @@ struct
       | Left (l, r) -> aux l @ aux r
       | Right t -> [t]
     in aux
-       
+
   let rec decl : Ast.ctyp -> decl list * alias_map = function
     | Ast.TyDcl (loc, name, ps, rhs, cs) ->
         set_name_prefix name;
@@ -367,7 +367,7 @@ struct
         let decls, aliases = List.split (P.declify (vs @ vcs)) in
           [(name, P.params, tl, cs, false)] @ decls, build_alias_map aliases
     | _ -> assert false
-        
+
   let substitute_aliases : alias_map -> decl -> decl = fun map ->
   object
     inherit transform as super
@@ -377,7 +377,7 @@ struct
   end # decl
 
   let decls : Ast.ctyp -> decl list =
-    fun ctyp -> 
+    fun ctyp ->
       let decls, aliases = List.split (List.map decl (split ctyp)) in
         List.concat
           (List.map
@@ -411,7 +411,7 @@ module Untranslate (C:sig val _loc : Camlp4.PreCast.Ast.Loc.t end) : Untranslate
 struct
   open Camlp4.PreCast
   open C
-    
+
   let param = function
     | p, None        -> <:ctyp<  '$lid:p$ >>
     | p, Some `Plus  -> <:ctyp< +'$lid:p$ >>
@@ -421,8 +421,8 @@ struct
     | [] -> assert false
     | [x] -> <:ident< $lid:x$ >>
     | x::xs -> <:ident< $uid:x$.$qname xs$ >>
-        
-  let unlist join items translate = 
+
+  let unlist join items translate =
     List.fold_right join (List.map translate items) (Ast.TyNil _loc)
 
   let pair l r = Ast.TySta (_loc, l,r)
@@ -431,7 +431,7 @@ struct
   let comma l r = <:ctyp< $l$ , $r$ >>
   let and_ l r = <:ctyp< $l$ and $r$ >>
 
-  let expr = 
+  let expr =
     let rec expr : expr -> Ast.ctyp = function
         `Param p -> param p
       | `Function (f, t) -> <:ctyp< $expr f$ -> $expr t$ >>
@@ -444,10 +444,10 @@ struct
       | [x]   -> <:ctyp< $f$ $expr x$ >>
       | x::xs -> app (<:ctyp< $f$ $expr x$ >>) xs
     in expr
-         
+
   let poly (params, t) =
     List.fold_right
-      (fun (p : param) (t : Ast.ctyp) -> 
+      (fun (p : param) (t : Ast.ctyp) ->
          Ast.TyPol (_loc, param p, t))
       params
       (expr t)
@@ -468,7 +468,7 @@ struct
       | Extends t -> <:ctyp< $expr t$ >>
   and summand (name, (args : expr list)) =
       let args = unlist and_ args expr in
-        <:ctyp< $uid:name$ of $args$ >> 
+        <:ctyp< $uid:name$ of $args$ >>
   and field ((name, t, mut) : field) = match mut with
       | `Mutable   -> <:ctyp< $lid:name$ : mutable $poly t$ >> (* mutable l : t doesn't work; perhaps a camlp4 bug *)
       | `Immutable -> <:ctyp< $lid:name$ : $poly t$ >>

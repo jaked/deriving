@@ -10,13 +10,13 @@ let either_partition (f : 'a -> ('b, 'c) either) (l : 'a list)
   let rec aux (lefts, rights) = function
     | [] -> (List.rev lefts, List.rev rights)
     | x::xs ->
-        match f x with 
+        match f x with
           | Left l  -> aux (l :: lefts, rights) xs
           | Right r -> aux (lefts, r :: rights) xs
   in aux ([], []) l
-       
 
-module List = 
+
+module List =
 struct
   include List
 
@@ -24,7 +24,7 @@ struct
     = fun f l -> match l with
       | x::xs  -> List.fold_left f x xs
       | []     -> invalid_arg "fold_left1"
-          
+
   let rec fold_right1 : ('a -> 'a -> 'a) -> 'a list -> 'a
     = fun f l -> match l with
       | [x]   -> x
@@ -32,7 +32,7 @@ struct
       | []    -> invalid_arg "fold_right1"
 
   let rec range from upto =
-    let rec aux f t result = 
+    let rec aux f t result =
       if f = t then result
       else aux (f+1) t (f::result)
     in if upto < from then raise (Invalid_argument "range")
@@ -43,20 +43,20 @@ struct
     | [x]   -> x
     | _::xs -> last xs
 
-  let concat_map f l = 
+  let concat_map f l =
     let rec aux = function
       | _, [] -> []
       | f, x :: xs -> f x @ aux (f, xs)
     in aux (f,l)
 
-  let concat_map2 (f : 'a -> 'b -> 'c list) (l1 : 'a list) (l2 : 'b list) : 'c list = 
+  let concat_map2 (f : 'a -> 'b -> 'c list) (l1 : 'a list) (l2 : 'b list) : 'c list =
     let rec aux = function
       | [], [] -> []
       | x::xs, y :: ys -> f x y @ aux (xs, ys)
       | _ -> invalid_arg "concat_map2"
     in aux (l1, l2)
 
-  let mapn ?(init=0) f = 
+  let mapn ?(init=0) f =
     let rec aux n = function
       | [] -> []
       | x::xs -> f x n :: aux (n+1) xs in
@@ -85,7 +85,7 @@ end
 module Option =
 struct
   let map f = function
-    | None -> None 
+    | None -> None
     | Some x -> Some (f x)
 end
 
@@ -127,7 +127,7 @@ struct
     | TyMan (_, c1, c2) -> "TyMan ("^ ctyp c1 ^ ", " ^ ctyp c2 ^")"
     | TyPol (_, c1, c2) -> "TyPol ("^ ctyp c1 ^ ", " ^ ctyp c2 ^")"
     | TyQuo (_, s) -> "TyQuo("^s^")"
-    | TyQuP (_, s) -> "TyQuP("^s^")" 
+    | TyQuP (_, s) -> "TyQuP("^s^")"
     | TyQuM (_, s) -> "TyQuM("^s^")"
     | TyVrn (_, s) -> "TyVrn("^s^")"
     | TyCol (_, c1, c2) -> "TyCol ("^ ctyp c1 ^ ", " ^ ctyp c2 ^")"
@@ -146,14 +146,14 @@ module StringMap =
 struct
   include Map.Make(String)
   exception NotFound of string
-  let find s m = 
+  let find s m =
     try find s m
     with Not_found -> raise (NotFound s)
   let fromList : (key * 'a) list -> 'a t = fun elems ->
     List.fold_right (F.uncurry add) elems empty
   let union_disjoint2 l r =
     fold
-      (fun k v r -> 
+      (fun k v r ->
          if mem k r then invalid_arg "union_disjoint"
          else add k v r) l r
   let union_disjoint maps = List.fold_right union_disjoint2 maps empty
@@ -173,11 +173,11 @@ struct
   end
 end
 
-let random_id length = 
+let random_id length =
   let idchars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'" in
   let nidchars = String.length idchars in
-  let s = String.create length in 
-    for i = 0 to length - 1 do 
+  let s = String.create length in
+    for i = 0 to length - 1 do
       s.[i] <- idchars.[Random.int nidchars]
     done;
     s
@@ -186,7 +186,7 @@ let random_id length =
    integer representations.  The formula is given in Jacques
    Garrigue's 1998 ML workshop paper.
 *)
-let tag_hash s = 
+let tag_hash s =
   let wrap = 0x40000000 in
   let acc = ref 0 in
   let len = String.length s in
@@ -198,7 +198,7 @@ let tag_hash s =
     acc := !acc land (1 lsl 31 - 1);
     if !acc >= wrap then !acc - (1 lsl 31) else !acc
 
-let _ = 
+let _ =
   (* Sanity check to make sure the function doesn't change underneath
      us *)
   assert (tag_hash "premiums" = tag_hash "squigglier");
