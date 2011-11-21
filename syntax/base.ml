@@ -473,8 +473,8 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
 		      cluster.Clusters.params)
 		   fname
 	       in
-	       gen#unpack argmap (`Constr ([tname], params))
-	       <:expr< Lazy.force $e$ >>)
+	       let ty = `Constr ([tname], params) in
+	       gen#unpack argmap ty (<:expr< Lazy.force $e$ >>))
 	    fun_names
 	in
 	let ctxt = { argmap; mod_insts; } in
@@ -502,6 +502,9 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
 	  with EMap.Not_found _ -> gen#rhs ctxt NameMap.empty decl
 
 	in
+	let body =
+	  let ty = `Constr ([tname], List.map (fun p -> `Param p) params) in
+	  <:module_expr< ($body$ : $gen#class_sig argmap ty$) >> in
 	let body =
 	  List.fold_right
 	    (add_functor_param argmap)

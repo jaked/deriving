@@ -1,3 +1,4 @@
+.*.deps
 *.cm[iaox]
 *.cmxa
 *.cmxs
@@ -12,3 +13,5 @@ tests/tests
 META
 syntax/deriving
 syntax/deriving.opt
+syntax/id.ml
+syntax/defs.ml
