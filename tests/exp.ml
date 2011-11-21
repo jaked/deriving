@@ -1,5 +1,3 @@
-(*pp deriving *)
-
 open Deriving_Eq
 open Deriving_Dump
 open Deriving_Typeable

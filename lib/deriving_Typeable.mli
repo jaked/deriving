@@ -1,12 +1,12 @@
 module TypeRep :
 sig
   type t
-  type delayed = unit -> t
+  type delayed = t Lazy.t
   val compare : t -> t -> int
   val eq : t -> t -> bool
-  val mkFresh : string -> delayed list -> delayed
-  val mkTuple : delayed list -> delayed
-  val mkPolyv : (string * delayed option) list -> delayed list -> delayed
+  val mkFresh : string -> delayed list -> t
+  val mkTuple : delayed list -> t
+  val mkPolyv : (string * delayed option) list -> delayed list -> t
 end
 
 exception CastFailure of string
@@ -17,7 +17,7 @@ val tagOf : dynamic -> TypeRep.t
 module type Typeable =
 sig
   type a
-  val type_rep : unit -> TypeRep.t
+  val type_rep : TypeRep.t Lazy.t
   val has_type : dynamic -> bool
   val cast : dynamic -> a option
   val throwing_cast : dynamic -> a
@@ -27,7 +27,7 @@ end
 
 module Defaults (T : (sig
                         type a
-                        val type_rep : unit -> TypeRep.t
+                        val type_rep : TypeRep.t Lazy.t
                       end))
   : Typeable with type a = T.a
 

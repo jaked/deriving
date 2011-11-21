@@ -1,5 +1,3 @@
-(*pp deriving *)
-
 open Defs
 open Deriving_Eq
 open Deriving_Pickle

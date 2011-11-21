@@ -1,4 +1,5 @@
 (* Copyright Jeremy Yallop 2007.
+   Copyright Grégoire Henry 2011.
    This file is free software, distributed under the MIT license.
    See the file COPYING for details.
 *)
@@ -42,6 +43,22 @@ and poly_expr = param list * expr
 and variant = [`Gt | `Lt | `Eq] * tagspec list
 and tagspec = Tag of name * expr list
               | Extends of expr
+
+module Param = struct type t = param let compare = compare end
+module ParamSet = Set.Make(Param)
+module ParamMap = Map.Make(Param)
+
+module Expr = struct type t = expr let compare = compare end
+module ExprSet = Set.Make(Expr)
+module ExprMap = Map.Make(Expr)
+
+module E = struct
+  type t = name * expr list
+  let compare = compare
+end
+module ESet = Set.Make(E)
+module EMap = Map.Make(E)
+
 
 class virtual ['result] fold =
 object (self : 'self)
@@ -386,6 +403,7 @@ module type Untranslate = sig
   open Camlp4.PreCast
   val param: string * [< `Minus | `Plus ] option -> Ast.ctyp
   val qname: string list -> Ast.ident
+  val qName: string list -> Ast.ident
   val unlist: ('a -> Ast.ctyp -> Ast.ctyp) -> 'b list -> ('b -> 'a) -> Ast.ctyp
   val pair: Ast.ctyp -> Ast.ctyp -> Ast.ctyp
   val bar:  Ast.ctyp -> Ast.ctyp -> Ast.ctyp
@@ -418,6 +436,11 @@ struct
     | [] -> assert false
     | [x] -> <:ident< $lid:x$ >>
     | x::xs -> <:ident< $uid:x$.$qname xs$ >>
+
+  let rec qName = function
+    | [] -> assert false
+    | [x] -> <:ident< $uid:x$ >>
+    | x::xs -> <:ident< $uid:x$.$qName xs$ >>
 
   let unlist join items translate =
     List.fold_right join (List.map translate items) (Ast.TyNil _loc)
@@ -482,3 +505,41 @@ struct
     [Ast.TyDcl (_loc, name, List.map param params, rhs r, List.map constraint_ constraints)]
 
 end
+
+let free_tvars =
+  (* FIXME polycase *)
+  let o = object
+     inherit [ParamSet.t] fold as default
+     method crush = List.fold_left ParamSet.union ParamSet.empty
+     method poly_expr = assert false
+     method expr = function
+       | `Param p  -> ParamSet.singleton p
+       | e -> default#expr e
+  end in o#expr
+
+let contains_tvars, contains_tvars_decl =
+  let o = object
+     inherit [bool] fold as default
+     method crush = List.exists F.id
+     method expr = function
+       | `Param _ -> true
+       | e -> default#expr e
+  end in (o#expr, o#decl)
+
+type subst = expr NameMap.t
+let build_subst l = NameMap.fromList l
+let substitute map = object
+  inherit transform as super
+  method expr = function
+    | `Param (p,_) when NameMap.mem p map -> NameMap.find p map
+    | e -> super#expr e
+end
+let substitute_decl map =
+  (substitute map)#decl
+let substitute_expr map =
+  (substitute map)#expr
+let substitute_rhs map =
+  (substitute map)#rhs
+let substitute_constraint map =
+  (substitute map)#constraint_
+

@@ -1,4 +1,5 @@
 (* Copyright Jeremy Yallop 2007.
+   Copyright Grégoire Henry 2011.
    This file is free software, distributed under the MIT license.
    See the file COPYING for details.
 *)
@@ -58,6 +59,7 @@ module Set : sig
 
   module type S = sig
     include Set.S
+    val toList : t -> elt list
     val fromList : elt list -> t
   end
 
@@ -68,3 +70,5 @@ end
 val random_id : int -> string
 
 val tag_hash : string -> int
+
+val typevar_of_int : int -> string

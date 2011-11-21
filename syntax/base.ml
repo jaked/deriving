@@ -1,4 +1,5 @@
 (* Copyright Jeremy Yallop 2007.
+   Copyright Grégoire Henry 2011.
    This file is free software, distributed under the MIT license.
    See the file COPYING for details.
 *)
@@ -10,7 +11,6 @@ open Camlp4.PreCast
 
 exception Underivable of string
 exception NoSuchClass of string
-
 
 let fatal_error loc msg =
   Syntax.print_warning loc msg;
@@ -33,62 +33,44 @@ let contains_tvars, contains_tvars_decl =
        | e -> default#expr e
   end in (o#expr, o#decl)
 
-module InContext(L : Loc)(D : ClassDescription) : ClassHelpers =
-struct
-  include L
-  module Untranslate = Untranslate(L)
 
-  open D
+(** *)
 
-  let instantiate, instantiate_repr =
-    let o lookup = object
-      inherit transform as super
-      method expr = function
-        | `Param (name, _) -> lookup name
-        | e                -> super # expr e
-    end in
-      (fun (lookup : name -> expr) -> (o lookup)#expr),
-      (fun (lookup : name -> expr) -> (o lookup)#repr)
+let instantiate, instantiate_repr =
+  let o lookup = object
+    inherit transform as super
+    method expr = function
+    | `Param (name, _) -> lookup name
+    | e                -> super # expr e
+  end in
+  (fun (lookup : name -> expr) -> (o lookup)#expr),
+  (fun (lookup : name -> expr) -> (o lookup)#repr)
 
-  let instantiate_modargs, instantiate_modargs_repr =
-    let lookup argmap var =
-      try
-        `Constr ([NameMap.find var argmap; "a"], [])
-      with Not_found ->
-        failwith ("Unbound type parameter '" ^ var)
-    in (fun argmap -> instantiate (lookup argmap)),
-       (fun argmap -> instantiate_repr (lookup argmap))
+let instantiate_modargs, instantiate_modargs_repr =
+  let lookup argmap var =
+    try `Constr (NameMap.find var argmap @ ["a"], [])
+    with NameMap.Not_found _ ->
+      `Param (var, None)
+  in (fun argmap -> instantiate (lookup argmap)),
+  (fun argmap -> instantiate_repr (lookup argmap))
 
-  let substitute env =
-    (object
-       inherit transform as default
-       method expr = function
-         | `Param (p,v) when NameMap.mem p env ->
-             `Param (NameMap.find p env,v)
-         | e -> default# expr e
-     end) # expr
+module AstHelpers(Loc : Loc) = struct
 
-  let cast_pattern argmap ?(param="x") t =
-    let t = Untranslate.expr (instantiate_modargs argmap t) in
-      (<:patt< $lid:param$ >>,
-       <:expr<
-         let module M =
-             struct
-               type $Ast.TyDcl (_loc, "t", [], t, [])$
-               let test = function #t -> true | _ -> false
-             end in M.test $lid:param$ >>,
-       <:expr<
-         (let module M =
-              struct
-                type $Ast.TyDcl (_loc, "t", [], t, [])$
-                let cast = function #t as t -> t | _ -> assert false
-              end in M.cast $lid:param$ )>>)
+  open Loc
+
+  module Loc = Loc
+  module Untranslate = Type.Untranslate(Loc)
+
+  (** Expression sequences *)
 
   let seq l r = <:expr< $l$ ; $r$ >>
   let rec seq_list = function
     | [] -> <:expr< () >>
     | [e] -> e
     | e::es -> seq e (seq_list es)
+
+
+  (** Record *)
 
   let record_pattern ?(prefix="") (fields : Type.field list) : Ast.patt =
     <:patt<{$list:
@@ -112,15 +94,8 @@ struct
            fields) in
         Ast.ExRec (_loc, es, Ast.ExNil _loc)
 
-  let mproject mexpr name =
-    match mexpr with
-      | <:module_expr< $id:m$ >> -> <:expr< $id:m$.$lid:name$ >>
-      | _ -> <:expr< let module M = $mexpr$ in M.$lid:name$ >>
 
-  let mProject mexpr name =
-    match mexpr with
-      | <:module_expr< $uid:m$ >> -> <:module_expr< $uid:m$.$uid:name$ >>
-      | _ -> <:module_expr< struct module M = $mexpr$ include M.$uid:name$ end >>
+  (** Record *)
 
   let expr_list : Ast.expr list -> Ast.expr =
       (fun exprs ->
@@ -135,6 +110,9 @@ struct
            (fun car cdr -> <:patt< $car$ :: $cdr$ >>)
            patts
          <:patt< [] >>)
+
+
+  (** Tuple *)
 
   let tuple_expr : Ast.expr list -> Ast.expr = function
     | [] -> <:expr< () >>
@@ -158,61 +136,237 @@ struct
             in
               List.map v (List.range 0 n), Ast.PaTup (_loc, patts), Ast.ExTup (_loc, exprs)
 
+  (** *)
+
+  let cast_pattern argmap ?(param="x") ty =
+    let ty = Untranslate.expr (instantiate_modargs argmap ty) in
+    (<:patt< $lid:param$ >>,
+     <:expr<
+       let module M =
+           struct
+             type $Ast.TyDcl (_loc, "t", [], ty, [])$
+             let test = function #t -> true | _ -> false
+           end in M.test $lid:param$ >>,
+     <:expr<
+       (let module M =
+            struct
+              type $Ast.TyDcl (_loc, "t", [], ty, [])$
+              let cast = function #t as t -> t | _ -> assert false
+            end in M.cast $lid:param$ )>>)
+
+  (**  *)
+
+  let atype_expr argmap ty =
+    let ty = instantiate_modargs argmap ty in
+    match ty with
+    | `Constr(["a"],_) ->
+	raise (Underivable ("deriving: types called `a' are not allowed.\n"
+			    ^ "Please change the name of your type and try again."));
+    | ty -> Untranslate.expr ty
+
   let rec modname_from_qname ~qname ~classname =
     match qname with
       | [] -> invalid_arg "modname_from_qname"
       | [t] -> <:ident< $uid:classname ^ "_"^ t$ >>
       | t::ts -> <:ident< $uid:t$.$modname_from_qname ~qname:ts ~classname$ >>
 
-  let apply_functor (f : Ast.module_expr) (args : Ast.module_expr list) : Ast.module_expr =
-      List.fold_left (fun f p -> <:module_expr< $f$ ($p$) >>) f args
+  let mproject mexpr (name:string) =
+    match mexpr with
+      | <:module_expr< $id:m$ >> -> <:expr< $id:m$.$lid:name$ >>
+      | _ -> <:expr< let module M = $mexpr$ in M.$lid:name$ >>
 
-  let atype_expr ctxt expr =
-    Untranslate.expr (instantiate_modargs ctxt.argmap expr)
+  let mProject mexpr name =
+    match mexpr with
+      | <:module_expr< $uid:m$ >> -> <:module_expr< $uid:m$.$uid:name$ >>
+      | _ -> <:module_expr< struct module M = $mexpr$ include M.$uid:name$ end >>
 
-  let atype ctxt (name, params, rhs, _, _) =
-    match rhs with
-    | `Fresh _ | `Variant _ | `Nothing ->
-	let params =
-	  List.map
-	    (fun (p, _) -> `Constr ([NameMap.find p ctxt.argmap; "a"],[]))
-	    params in
-	Untranslate.expr (`Constr ([name], params))
-    | `Expr e -> atype_expr ctxt e
 
-  let wrap_default m = match default_module with
-  | None -> m
-  | Some name ->
-      <:module_expr< $uid:runtimename$.$uid:name$($m$) >>
+end
 
-  let rdepends =
-    List.map
-      (fun d -> (module (val d : ClassDependency)(L) : RawClassDependency))
-      depends
+module Generator(Loc: Loc)(Desc : ClassDescription) = struct
 
-  let import_depend ctxt ty d =
-    assert (ctxt.toplevel = None);
-    let module M = (val d : RawClassDependency) in
-    let ctxt = { ctxt with toplevel = Some (classname, ty) } in
-    <:str_item< module $uid:M.classname$ = $M.generate_expr ctxt ty$ >>
+  (** How does it works ?
+
+      For each type declaration, we generate a functor taking as
+      parameters the class instances for the type parameters.
+
+      For (mutually) recursive type declaration(s), we compute the
+      (finite) set of required recursive class instances (see
+      "cluster.mli") and generate a functor containing all these
+      class  instances. Then we generate a non-recursive functor for
+      each type declaration.
+
+      For the set of recursive class instances we use "lazy
+      first-order module" instead of "recursive modules" to be
+      compatible with 'js_of_ocaml' (that do not allow recursive
+      modules). E.g. for two mutually recursive type 'a t and 'a t2:
+
+      module Show_RandomId(M_a: Show) = struct
+        let rec make_t =
+          lazy (module struct ... end : Show with type a = M_a.a t)
+        and make_t2 =
+          lazy (module struct ... end : Show with type a = M_a.a t2)
+      end
+
+      module Show_t(M_a: Show) = struct
+        module Show_RandomId = Show_RandomId(M_a)
+        type a = M_a.a t
+        let show =
+          let module M = (val Lazy.force Show_RandomId.make_t) in
+          M.show
+        ...
+      end
+      module Show_t2(M_a: Show) =
+        module Show_RandomId = Show_RandomId(M_a)
+        type a = M_a.a t2
+        let show =
+          let module M = (val Lazy.force Show_RandomId.make_t2) in
+          M.show
+        ...
+      end
+
+  *)
+
+  module Helpers = AstHelpers(Loc)
+  module Untranslate = Helpers.Untranslate
+
+  open Loc
+
+  type context = {
+    (* Maps type expression to name of a module's value inside the
+       cluster's functor. *)
+    mod_insts : Ast.module_expr Type.EMap.t;
+    (* Maps name of type's parameter name to module name of functor's
+       parameters *)
+    argmap : Type.qname Type.NameMap.t;
+  }
+
+  let make_argmap params =
+    List.fold_left
+      (fun params (name, _) -> NameMap.add name (["M_" ^ name]) params)
+      NameMap.empty
+      params
+
+  let cast_pattern ctxt ?param ty =
+    Helpers.cast_pattern ctxt.argmap ?param ty
+  let instantiate_modargs_repr ctxt = instantiate_modargs_repr ctxt.argmap
+
+  let import_depend ctxt ty depend =
+    let module Dep = (val depend : FullClassBuilder)(Loc) in
+    let argmap =
+      NameMap.map (fun qname -> qname @ [Dep.classname]) ctxt.argmap
+    and mod_insts =
+     EMap.map (fun m -> Helpers.mProject m Dep.classname) ctxt.mod_insts
+    in
+    let mod_insts = match ty with
+      | `Constr ([tname],params) ->
+	  EMap.remove (tname,params) mod_insts
+      | _ -> mod_insts
+	  in
+    <:str_item<
+      module $uid:Dep.classname$ =
+	$Dep.generate_expr mod_insts argmap ty$
+    >>
 
   let import_depends ctxt ty =
-    List.map (import_depend ctxt ty) rdepends
+    List.map (import_depend ctxt ty) Desc.depends
 
-  class virtual make_module_expr =
-  object (self)
+  class virtual generator = object (self)
 
-    method wrap ctxt ty items =
+    (* *)
+
+    method call_expr ctxt ty name = Helpers.mproject (self#expr ctxt ty) name
+
+    (* *)
+
+    method class_sig argmap ty =
+      <:module_type<
+	$uid:Desc.runtimename$.$uid:Desc.classname$
+          with type a = $Helpers.atype_expr argmap ty$
+      >>
+
+    method pack argmap ty m =
+      match m with
+      | <:module_expr< (val $e$) >> -> e
+      | _ ->
+	  (* <:expr< (module $m$ : $class_sig ctxt decl) >> *)
+	  Ast.ExPkg (_loc, (Ast.MeTyc (_loc, m, self#class_sig argmap ty)))
+
+    method unpack argmap ty e =
+      match e with
+      | <:expr< (module $m$) >> -> m
+      | _ ->
+	  (* (val $e$ : $class_sig gen argmap decl$) *)
+	  Ast.MePkg (_loc,
+		     Ast.ExTyc (_loc, e,
+				Ast.TyPkg (_loc, self#class_sig argmap ty)))
+
+    (** *)
+
+    method wrap ctxt ?(default = Desc.default_module) ty items =
       let mexpr =
 	<:module_expr< struct
-	  type a = ($atype_expr ctxt ty$)
+	  type a = ($Helpers.atype_expr ctxt.argmap ty$)
 	  $list:import_depends ctxt ty$
 	  $list:items$
 	end >> in
-      wrap_default mexpr
+      match default with
+      | None -> mexpr
+      | Some name ->
+	  <:module_expr< $uid:Desc.runtimename$.$uid:name$($mexpr$) >>
 
-    method mapply ctxt (funct : Ast.module_expr) args =
-      apply_functor funct (List.map (self#expr ctxt) args)
+    (** *)
+
+    method expr ctxt (ty: Type.expr) =
+      match ty with
+      | `Param p    ->                   (self#param      ctxt p)
+      | `Object o   -> self#wrap ctxt ty (self#object_    ctxt o)
+      | `Class c    -> self#wrap ctxt ty (self#class_     ctxt c)
+      | `Label l    -> self#wrap ctxt ty (self#label      ctxt l)
+      | `Function f -> self#wrap ctxt ty (self#function_  ctxt f)
+      | `Constr c   ->                   (self#constr     ctxt c)
+      | `Tuple t    -> self#wrap ctxt ty (self#tuple      ctxt t)
+
+    method rhs ctxt subst (tname, params, rhs, constraints, _ : Type.decl) =
+      let ty = `Constr([tname], List.map (fun p -> `Param p) params) in
+      let ty = substitute_expr subst ty in
+      let rhs = substitute_rhs subst rhs in
+      match rhs with
+        | `Fresh (_, _, `Private) when not Desc.allow_private ->
+            raise (Underivable ("The class " ^ Desc.classname
+				^ " cannot be derived for private types"))
+        | `Fresh (eq, Sum summands, _) ->
+	    self#wrap ctxt ty (self#sum ?eq ctxt tname params constraints summands)
+        | `Fresh (eq, Record fields, _) ->
+	    self#wrap ctxt ty (self#record ?eq ctxt tname params constraints fields)
+        | `Expr e -> self#expr ctxt e
+        | `Variant v ->
+	    self#wrap ctxt ty (self#variant ctxt tname params constraints v)
+        | `Nothing -> <:module_expr< >>
+
+    method param ctxt (name, _) =
+      <:module_expr< $id:Untranslate.qName (NameMap.find name ctxt.argmap)$ >>
+
+    method constr ctxt (qname, params) =
+      match qname with
+      | [tname] when EMap.mem (tname,params) ctxt.mod_insts ->
+	  (* Instance in the current cluster. *)
+	  EMap.find (tname, params) ctxt.mod_insts
+      | _ ->
+	(* External module: apply classical functor. *)
+        let qname =
+	  try [Desc.runtimename ; List.assoc qname Desc.predefs]
+	  with Not_found -> qname in
+	List.fold_left
+	  (fun m p -> <:module_expr< $m$ ($self#expr ctxt p$) >>)
+	  <:module_expr<
+	      $id:Helpers.modname_from_qname
+	            ~qname ~classname:Desc.classname$ >>
+	  params
+
+    method virtual proxy: unit -> Type.name option * Ast.ident list
+
+    (* *)
 
     method virtual variant:
 	context ->
@@ -228,226 +382,202 @@ struct
 	    field list -> Ast.str_item list
     method virtual tuple: context -> expr list -> Ast.str_item list
 
-    method param ctxt (name, _) =
-      match ctxt.toplevel with
-      | None -> <:module_expr< $uid:NameMap.find name ctxt.argmap$ >>
-      | Some _ ->
-	  let mexpr = <:module_expr< $uid:NameMap.find name ctxt.argmap$ >> in
-	  mProject mexpr classname
-
-
-    method object_   _ o = raise (Underivable (classname ^ " cannot be derived for object types"))
-    method class_    _ c = raise (Underivable (classname ^ " cannot be derived for class types"))
-    method label     _ l = raise (Underivable (classname ^ " cannot be derived for label types"))
-    method function_ _ f = raise (Underivable (classname ^ " cannot be derived for function types"))
-
-    method constr ctxt (qname, params) =
-      let ty : Type.expr = `Constr (qname, params) in
-      match qname with
-      | [name] when NameSet.mem name ctxt.tnames -> begin
-	  match ctxt.toplevel with
-	  | None -> <:module_expr< $uid:Printf.sprintf "%s_%s" classname name$ >>
-	  | Some (topclassname, (`Constr ([name], params) as ty')) when ty' = ty ->
-	      let e = apply_functor
-		  <:module_expr< $uid:Printf.sprintf "%s_%s" classname name$ >>
-	        (List.map (fun p -> self#expr ctxt p) params) in
-	      <:expr< $e$ >>
-	  | Some (topclassname, _) ->
-	      let mexpr =
-		<:module_expr< $uid:Printf.sprintf "%s_%s" topclassname name$ >> in
-	      mProject mexpr classname
-      end
-      | _ ->
-	  let qname =
-	    try [runtimename ; List.assoc qname predefs]
-	    with Not_found -> qname in
-          let f = (modname_from_qname ~qname ~classname) in
-          self#mapply ctxt (Ast.MeId (_loc, f)) params
-
-    method expr ctxt ty = match ty with
-      | `Param p    ->                   (self#param      ctxt p)
-      | `Object o   -> self#wrap ctxt ty (self#object_    ctxt o)
-      | `Class c    -> self#wrap ctxt ty (self#class_     ctxt c)
-      | `Label l    -> self#wrap ctxt ty (self#label      ctxt l)
-      | `Function f -> self#wrap ctxt ty (self#function_  ctxt f)
-      | `Constr c   ->                   (self#constr     ctxt c)
-      | `Tuple t    -> self#wrap ctxt ty (self#tuple      ctxt t)
-
-    method rhs ctxt (tname, params, rhs, constraints, _ : Type.decl) : Ast.module_expr =
-      let ty = `Constr([tname], List.map (fun p -> `Param p) params) in
-      match rhs with
-        | `Fresh (_, _, (`Private : [`Private|`Public])) when not allow_private ->
-            raise (Underivable ("The class "^ classname ^" cannot be derived for private types"))
-        | `Fresh (eq, Sum summands, _) ->
-	    self#wrap ctxt ty (self#sum ?eq ctxt tname params constraints summands)
-        | `Fresh (eq, Record fields, _) ->
-	    self#wrap ctxt ty (self#record ?eq ctxt tname params constraints fields)
-        | `Expr e -> self#expr ctxt e
-        | `Variant v -> self#wrap ctxt ty (self#variant ctxt tname params constraints v)
-        | `Nothing -> <:module_expr< >>
-
-    method call_expr ctxt ty name = mproject (self#expr ctxt ty) name
+    method object_   _ o =
+      raise (Underivable (Desc.classname ^ " cannot be derived for object types"))
+    method class_    _ c =
+      raise (Underivable (Desc.classname ^ " cannot be derived for class types"))
+    method label     _ l =
+      raise (Underivable (Desc.classname ^ " cannot be derived for label types"))
+    method function_ _ f =
+      raise (Underivable (Desc.classname ^ " cannot be derived for function types"))
 
   end
 
-  let make_safe (decls : (decl * Ast.module_binding) list) : Ast.module_binding list =
-    (* re-order a set of mutually recursive modules in an attempt to
-       make initialization problems less likely *)
-    List.map snd
-      (List.sort
-         (fun ((_,_,lrhs,_,_), _) ((_,_,rrhs,_,_), _) -> match (lrhs : rhs), rrhs with
-            (* aliases to types in the group score higher than
-               everything else.
+  let add_functor_param argmap (pname,_) body =
+    match NameMap.find pname argmap with
+    | [name] ->
+	<:module_expr<
+	  functor ( $uid:name$
+		      : $uid:Desc.runtimename$.$uid:Desc.classname$)
+	    -> $body$ >>
+    | _ -> assert false
 
-               In general, things that must come first receive a
-               positive score when they occur on the left and a
-               negative score when they occur on the right. *)
-            | (`Fresh _|`Variant _), (`Fresh _|`Variant _) -> 0
-            | (`Fresh _|`Variant _), _ -> -1
-            | _, (`Fresh _|`Variant _) -> 1
-            | (`Nothing, `Nothing) -> 0
-            | (`Nothing, _) -> 1
-            | (_, `Nothing) -> -1
-            | `Expr l, `Expr r ->
-                let module M =
-                    struct
-                      type low =
-                          [`Param of param
-                          |`Tuple of expr list]
-                    end in
-                  match l, r with
-                    | #M.low, _ -> 1
-                    | _, #M.low -> -1
-                    | _         -> 0)
-         decls)
+  let add_functor_param_sig argmap (pname,_) body =
+    match NameMap.find pname argmap with
+    | [name] ->
+	<:module_type<
+	  functor ( $uid:name$
+		      : $uid:Desc.runtimename$.$uid:Desc.classname$)
+	    -> $body$ >>
+    | _ -> assert false
 
-  let find_non_regular params tnames decls : name list =
-    List.concat_map
-      (object
-	inherit [name list] fold as default
-	method crush = List.concat
-	method expr = function
-          | `Constr ([t], args)
-            when NameSet.mem t tnames ->
-              (List.concat_map2
-                 (fun (p,_) a -> match a with
-                 | `Param (q,_) when p = q -> []
-                 | _ -> [t])
-                 params
-                 args)
-          | e -> default#expr e
-      end)#decl decls
+  let create_subst params eparams =
+    List.fold_right2 NameMap.add
+      (* (fun p ep map -> *)
+	 (* match ep with *)
+	 (* | `Param (p',_ ) when p' = p -> map *)
+	 (* | _ -> NameMap.add p ep map) *)
+      (List.map fst params) eparams
+      NameMap.empty
 
-  let extract_params =
-    let has_params params (_, ps, _, _, _) = ps = params in
-    function
-      | [] -> invalid_arg "extract_params"
-      | (_,params,_,_,_)::rest
-        when List.for_all (has_params params) rest ->
-          params
-      | (_,_,rhs,_,_)::_ ->
-          (* all types in a clique must have the same parameters *)
-          raise (Underivable ("Instances can only be derived for "
-                              ^"recursive groups where all types\n"
-                              ^"in the group have the same parameters."))
+  (** ... *)
 
-  let setup_context (tdecls : decl list) : context =
-    let params = extract_params tdecls
-    and tnames = NameSet.fromList (List.map (fun (name,_,_,_,_) -> name) tdecls) in
-    match find_non_regular params tnames tdecls with
-    | _::_ as names ->
-        failwith ("The following types contain non-regular recursion:\n   "
-                  ^String.concat ", " names
-                  ^"\nderiving does not support non-regular types")
-    | [] ->
-        let argmap =
-          List.fold_right
-            (fun (p,_) m -> NameMap.add p (Printf.sprintf "V_%s" p) m)
-            params
-            NameMap.empty in
-        { argmap = argmap;
-          params = params;
-          tnames = tnames;
-	  toplevel = None;
-	}
+  let generate (gen : generator) decls =
 
-  let default_generate ~make_module_expr ~make_module_type decls =
-    (* plan:
-       set up an enclosing recursive module
-       generate functors for all types in the clique
-       project out the inner modules afterwards.
+    let generate_cluster cluster =
 
-       later: generate simpler code for simpler cases:
-       - where there are no type parameters
-       - where there's only one type
-       - where there's no recursion
-       - etc.
-    *)
-    let context = setup_context decls in
-    let wrapper_name = Printf.sprintf "%s_%s" classname (random_id 32)  in
-    let make_functor =
-      List.fold_right
-        (fun (p,_) rhs ->
-           let arg = NameMap.find p context.argmap in
-             <:module_expr< functor ($arg$ : $uid:runtimename$.$uid:classname$) -> $rhs$ >>)
-        context.params in
-    let mbinds =
-      List.map
-        (fun (name,_,_,_,_ as decl) ->
-             (decl,
-              <:module_binding<
-                $uid:classname ^ "_"^ name$
-                : $make_module_type context decl$
-               = $make_module_expr context decl$ >>))
-        decls in
-    let sorted_mbinds = make_safe mbinds in
-    let mrec =
-      <:str_item< module rec $list:sorted_mbinds$ >> in
-      match context.params with
-        | [] -> mrec
-        | _ ->
-           let fixed = make_functor <:module_expr< struct $mrec$ end >> in
-           let applied = apply_functor <:module_expr< $uid:wrapper_name$ >>
-                                       (List.map (fun (p,_) -> <:module_expr< $uid:NameMap.find p context.argmap$>>)
-                                             context.params) in
-           let projected =
-             List.map (fun (name,params,rhs,_,_) ->
-                         let modname = classname ^ "_"^ name in
-                         let rhs = <:module_expr< struct module P = $applied$ include P.$uid:modname$ end >> in
-                           <:str_item< module $uid:modname$ = $make_functor rhs$>>)
-               decls in
-           let m = <:str_item< module $uid:wrapper_name$ = $fixed$ >> in
-             <:str_item< $m$ $list:projected$ >>
+      let cluster_name =
+	let id = random_id 32 in
+	Printf.sprintf "%s_%s" Desc.classname id in
 
-   let make_module_sig context (tname,params,_,_,generated as decl) =
-      if tname = "a" then
-        raise (Underivable ("deriving: types called `a' are not allowed.\n"
-                            ^"Please change the name of your type and try again."))
+      let fun_names =
+	let cpt = ref 0 in
+	List.fold_left
+	  (fun map (tname, _ as inst) ->
+	     incr cpt;
+	     EMap.add inst (Printf.sprintf "make_%s_%d" tname !cpt) map)
+	  EMap.empty
+	  cluster.Clusters.instances in
+
+      let cluster_argmap = make_argmap cluster.Clusters.params in
+
+      let generate_instance (tname, eparams as inst) =
+	let mod_insts =
+	  EMap.mapi
+	    (fun (tname, params) fname ->
+	       gen#unpack cluster_argmap (`Constr ([tname], params))
+		 (<:expr< Lazy.force $lid:fname$ >>))
+	    fun_names
+	in
+	let ctxt = { argmap = cluster_argmap; mod_insts; } in
+	let ty = `Constr([tname], eparams) in
+	let (_,params,_,_,_ as decl) =
+	  List.find (fun (tn,_,_,_,_) -> tname = tn) decls in
+	let subst = create_subst params eparams in
+	let body = gen#pack ctxt.argmap ty (gen#rhs ctxt subst decl) in
+	<:binding< $lid:EMap.find inst fun_names$ = lazy $body$ >>
+      in
+
+      let generate_functor (tname,params,_,_,_ as decl) =
+	let argmap = make_argmap params in
+	let mod_insts =
+	  EMap.mapi
+	    (fun (tname, params) fname ->
+	       let e =
+		 Helpers.mproject
+		   (List.fold_left
+		      (fun m (pname,_) ->
+			 let p = NameMap.find pname argmap in
+			 <:module_expr< $m$ ($id:Untranslate.qName p$) >>)
+		      (<:module_expr< $uid:cluster_name$ >>)
+		      cluster.Clusters.params)
+		   fname
+	       in
+	       gen#unpack argmap (`Constr ([tname], params))
+	       <:expr< Lazy.force $e$ >>)
+	    fun_names
+	in
+	let ctxt = { argmap; mod_insts; } in
+	let body =
+	  let params = List.map (fun p -> `Param p) params in
+	  let ty = `Constr ([tname], params) in
+	  try
+	    let tfname = EMap.find (tname, params) fun_names in
+	    let default, ids = gen#proxy () in
+	    let m =
+	      List.fold_left
+		(fun m p -> <:module_expr< $m$ ($gen#expr ctxt p$) >>)
+	      <:module_expr< $uid:cluster_name$ >>
+		params in
+	    let items =
+	      <:str_item< module M = $m$ >> ::
+		(let m = Helpers.mproject <:module_expr< M >> tfname in
+		 let m = gen#unpack argmap ty <:expr< Lazy.force $m$ >> in
+		 List.map
+		   (fun id ->
+		      <:str_item< let $id:id$ = let module M = $m$ in M.$id:id$ >>)
+		   ids)
+	    in
+	    (gen#wrap ~default ctxt ty items)
+	  with EMap.Not_found _ -> gen#rhs ctxt NameMap.empty decl
+
+	in
+	let body =
+	  List.fold_right
+	    (add_functor_param argmap)
+	    params
+	    body
+	in
+	<:str_item<
+          module $uid:Printf.sprintf "%s_%s" Desc.classname tname$ =
+	  $body$
+	>>
+      in
+
+      if cluster.Clusters.instances <> [] then
+	let intances =
+	  List.fold_right
+	    (add_functor_param cluster_argmap)
+	    cluster.Clusters.params
+	    <:module_expr< struct
+	      let rec $list:List.map generate_instance cluster.Clusters.instances$
+	    end >>
+	in
+	<:str_item<
+          module $uid:cluster_name$ = $intances$
+	  $list:List.map generate_functor cluster.Clusters.decls$
+        >>
       else
-        List.fold_right
-          (fun (p,_) m ->
-	    <:module_type< functor ($NameMap.find p context.argmap$ : $uid:runtimename$.$uid:classname$) -> $m$ >>)
-          params
-          <:module_type< $uid:runtimename$.$uid:classname$ with type a = $atype context decl$ >>
+	<:str_item< $list:List.map generate_functor cluster.Clusters.decls$ >>
+    in
 
-   let make_module_type context (name, _, _, _, _ as decl) =
-     if name = "a" then
-       raise (Underivable ("deriving: types called `a' are not allowed.\n"
-                           ^"Please change the name of your type and try again."))
-     else
-       <:module_type< $uid:runtimename$.$uid:classname$ with type a = $atype context decl$ >>
+    <:str_item< $list:List.map generate_cluster (Clusters.make decls)$ >>
 
-    let default_generate_sigs ~make_module_sig decls =
-      let context = setup_context decls in
-      let make (tname, _, _ ,_, generated as decl) =
-        if generated
-	then <:sig_item< >>
-	else
-	  let t = make_module_sig context decl in
-          <:sig_item< module $uid:Printf.sprintf "%s_%s" classname tname$ : $t$ >> in
-      <:sig_item< $list:List.map make decls$ >>
+  (** ... *)
+  let generate_sigs (gen:generator) decls =
+
+    let generate_sig (tname,params,rhs,_,generated) =
+      if generated then
+	<:sig_item< >>
+      else
+	let argmap = make_argmap params in
+	let ty =
+	  match rhs with
+	  | `Fresh _ | `Variant _ | `Nothing ->
+	      `Constr ([tname], List.map (fun p -> `Param p) params)
+	  | `Expr e -> e
+	in
+	let body =
+	  List.fold_right
+	    (add_functor_param_sig argmap)
+	    params
+	    (gen#class_sig argmap ty)
+	in
+	<:sig_item<
+          module $uid:Printf.sprintf "%s_%s" Desc.classname tname$ : $body$
+	>>
+    in
+
+    <:sig_item< $list:List.map generate_sig decls$ >>
+
+    let generate_expr (gen:generator) mod_insts argmap ty =
+      gen#expr { argmap; mod_insts; } ty
 
 end
+
+
+let derive_str _loc decls (desc, class_builder) =
+  let module Loc = struct let _loc = _loc end in
+  let module Desc = (val desc : ClassDescription) in
+  let module Class = (val class_builder : ClassBuilder)(Loc) in
+  display_errors _loc Class.generate decls
+
+let derive_sig _loc decls (desc, class_builder) =
+  let module Loc = struct let _loc = _loc end in
+  let module Desc = (val desc : ClassDescription) in
+  let module Class = (val class_builder : ClassBuilder)(Loc) in
+  display_errors _loc Class.generate_sigs decls
+
 
 let generators = Hashtbl.create 15
 let hashtbl_add (desc, _ as deriver) =
@@ -461,20 +591,6 @@ let find classname =
   try Hashtbl.find generators classname
   with Not_found -> raise (NoSuchClass classname)
 let is_registered classname = Hashtbl.mem generators classname
-
-let derive_str _loc (decls : Type.decl list) (desc, class_builder) : Ast.str_item =
-  let module Loc = struct let _loc = _loc end in
-  let module Desc = (val desc : ClassDescription) in
-  let module ClassHelpers = InContext(Loc)(Desc) in
-  let module Class = (val class_builder : ClassBuilder)(ClassHelpers) in
-  display_errors _loc Class.generate decls
-
-let derive_sig _loc (decls : Type.decl list) (desc, class_builder) : Ast.sig_item =
-  let module Loc = struct let _loc = _loc end in
-  let module Desc = (val desc : ClassDescription) in
-  let module ClassHelpers = InContext(Loc)(Desc) in
-  let module Class = (val class_builder : ClassBuilder)(ClassHelpers) in
-  display_errors _loc Class.generate_sigs decls
 
 module Register
     (Desc : ClassDescription)

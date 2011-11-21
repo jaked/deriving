@@ -10,6 +10,7 @@ SOURCES := id.ml                 \
            utils.ml              \
            type.ml               \
            defs.ml               \
+	   clusters.ml           \
            base.ml               \
            extend.ml             \
 
@@ -30,8 +31,8 @@ CLASSES := show_class.ml         \
            bounded_class.ml      \
            eq_class.ml           \
            typeable_class.ml     \
-           functor_class.ml      \
            pickle_class.ml       \
+           functor_class.ml      \
 
 MAIN := pa_deriving.ml
 ifneq (${TYPECONV},)
@@ -140,7 +141,7 @@ DEPS := $(patsubst %.ml,.%.ml.deps,${SOURCES} ${MAIN} ${MAIN_TC}) \
 .%.mli.deps: %.mli
 	${OCAMLDEP} ${LIBS} $^ > $@
 classes/.%.ml.deps: classes/%.ml
-	${OCAMLDEP} ${LIBS} $^ > $@
+	${OCAMLDEP} ${LIBS} $< > $@
 classes/.%.mli.deps: classes/%.mli
 	${OCAMLDEP} ${LIBS} $^ > $@
 

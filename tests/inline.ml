@@ -1,14 +1,11 @@
-(*pp deriving *)
-
 let _ = 
   Eq.eq<bool> true false
 
 
-let _ = 
+let _ =
   Show.show<(bool * string) list option> 
     (Some ([true, "yes";
             false, "no"]))
-
 
 let _ =
   [Typeable.mk<int> 3;
@@ -23,9 +20,13 @@ type nil = [`Nil]
 type intlist = ([nil| `Cons of int * 'a ] as 'a)
     deriving (Typeable)
     
+let t1 = Lazy.force (Typeable.type_rep<intlist>)
+let t2 = Lazy.force (Typeable.type_rep<int seq>)
+let _ = Deriving_Typeable.TypeRep.eq t1 t2
+
 let _ = 
-  Typeable.throwing_cast<intlist> 
-    (Typeable.mk<int seq> (`Cons (1, `Cons (2, `Cons (3, `Nil)))))
+  Typeable.throwing_cast<int seq> 
+    (Typeable.mk<intlist> (`Cons (1, `Cons (2, `Cons (3, `Nil)))))
 
 let _ =
     Eq.eq<bool> true (Eq.eq<int> 3 4)

@@ -3,9 +3,10 @@
    See the file COPYING for details.
 *)
 
-open Pa_deriving_common.Defs
+open Pa_deriving_common
+open Utils
 
-module Description : ClassDescription = struct
+module Description : Defs.ClassDescription = struct
   let classname = "Show"
   let runtimename = "Deriving_Show"
   let default_module = Some "Defaults"
@@ -31,16 +32,13 @@ module Description : ClassDescription = struct
   let depends = []
 end
 
-module InContext (L : Loc) : Class = struct
+module Builder(Loc : Defs.Loc) = struct
 
-  open Pa_deriving_common.Base
-  open Pa_deriving_common.Utils
-  open Pa_deriving_common.Type
+  module Helpers = Base.AstHelpers(Loc)
+  module Generator = Base.Generator(Loc)(Description)
+
+  open Loc
   open Camlp4.PreCast
-
-  open L
-  module Helpers = Pa_deriving_common.Base.InContext(L)(Description)
-  open Helpers
   open Description
 
   let wrap formatter =
@@ -61,13 +59,20 @@ module InContext (L : Loc) : Class = struct
   let in_hovbox ?(indent = 0) = in_a_box "pp_open_hovbox" indent
   and in_box ?(indent = 0) = in_a_box "pp_open_box" indent
 
-  let instance = object (self)
+  let generator = (object (self)
 
-    inherit make_module_expr
+    inherit Generator.generator
 
+    method proxy unit =
+      None, [ <:ident< format >>;
+	      <:ident< format_list >>;
+	      <:ident< show >>;
+	      <:ident< show_list >>; ]
 
     method nargs ctxt tvars args =
       match tvars, args with
+      | [id], [ty] ->
+	  <:expr< $self#call_expr ctxt ty "format"$ formatter $lid:id$ >>
       | id::ids, ty::tys ->
 	  let format_expr id ty =
             <:expr< $self#call_expr ctxt ty "format"$ formatter $lid:id$ >> in
@@ -76,12 +81,11 @@ module InContext (L : Loc) : Class = struct
 	            Format.pp_print_space formatter ();
 	            $format_expr id ty$>> in
 	  let exprs = format_expr id ty :: List.map2 format_expr' ids tys in
-          in_paren (in_hovbox ~indent:1 (seq_list exprs))
+          in_paren (in_hovbox ~indent:1 (Helpers.seq_list exprs))
       | _ -> assert false
 
     method tuple ctxt args =
-      let n = List.length args in
-      let tvars, tpatt, _ = tuple n in
+      let tvars, tpatt, _ = Helpers.tuple (List.length args) in
       wrap [ <:match_case< $tpatt$ -> $self#nargs ctxt tvars args$ >> ]
 
 
@@ -90,7 +94,7 @@ module InContext (L : Loc) : Class = struct
       | [] ->
 	  <:match_case< $uid:name$ -> Format.pp_print_string formatter $str:name$ >>
       | _ ->
-          let tvars, patt, exp = tuple (List.length args) in
+          let tvars, patt, exp = Helpers.tuple (List.length args) in
 	  let format_expr =
 	    <:expr< Format.pp_print_string formatter $str:name$;
                     Format.pp_print_break formatter 1 2;
@@ -103,8 +107,9 @@ module InContext (L : Loc) : Class = struct
 
     method field ctxt (name, (vars, ty), mut) =
       if vars <> [] then
-	raise (Underivable (classname ^ " cannot be derived for record types "
-			    ^ "with polymorphic fields"));
+	raise (Base.Underivable (classname
+				 ^ " cannot be derived for record types "
+				 ^ "with polymorphic fields"));
       <:expr< Format.pp_print_string formatter $str:name ^ " = "$;
               $self#call_expr ctxt ty "format"$ formatter $lid:name$ >>
 
@@ -118,20 +123,20 @@ module InContext (L : Loc) : Class = struct
           Format.pp_print_char formatter '{';
           $format_fields$;
           Format.pp_print_char formatter '}'; >> in
-      wrap [ <:match_case< $record_pattern fields$ -> $in_hovbox format_record$ >>]
+      wrap [ <:match_case< $Helpers.record_pattern fields$ -> $in_hovbox format_record$ >>]
 
     method polycase ctxt : Pa_deriving_common.Type.tagspec -> Ast.match_case = function
-      | Tag (name, []) ->
+      | Type.Tag (name, []) ->
 	  let format_expr =
 	    <:expr< Format.pp_print_string formatter $str:"`" ^ name ^" "$ >> in
           <:match_case< `$uid:name$ -> $format_expr$ >>
-      | Tag (name, es) ->
+      | Type.Tag (name, es) ->
 	  let format_expr =
 	    <:expr< Format.pp_print_string formatter $str:"`" ^ name ^" "$;
                     $self#call_expr ctxt (`Tuple es) "format"$ formatter x >> in
           <:match_case< `$uid:name$ x -> $in_hovbox format_expr$ >>
-      | Extends t ->
-          let patt, guard, cast = cast_pattern ctxt.argmap t in
+      | Type.Extends t ->
+          let patt, guard, cast = Generator.cast_pattern ctxt t in
 	  let format_expr =
 	    <:expr< $self#call_expr ctxt t "format"$ formatter $cast$ >> in
           <:match_case< $patt$ when $guard$ -> $in_hovbox format_expr$ >>
@@ -139,13 +144,11 @@ module InContext (L : Loc) : Class = struct
     method variant ctxt tname params constraints (_,tags) =
       wrap (List.map (self#polycase ctxt) tags @ [ <:match_case< _ -> assert false >> ])
 
-  end
+  end :> Generator.generator)
 
-  let make_module_expr = instance#rhs
-  let generate = default_generate ~make_module_expr ~make_module_type
-  let generate_sigs = default_generate_sigs ~make_module_sig
-  let generate_expr = instance#expr
+  let generate = Generator.generate generator
+  let generate_sigs = Generator.generate_sigs generator
 
 end
 
-module Show = Pa_deriving_common.Base.Register(Description)(InContext)
+module Show = Base.Register(Description)(Builder)

@@ -3,9 +3,10 @@
    See the file COPYING for details.
 *)
 
-open Pa_deriving_common.Defs
+open Pa_deriving_common
+open Utils
 
-module Description : ClassDescription = struct
+module Description : Defs.ClassDescription = struct
   let classname = "Pickle"
   let runtimename = "Deriving_Pickle"
   let default_module = Some "Defaults"
@@ -30,17 +31,13 @@ module Description : ClassDescription = struct
   let depends = [Typeable_class.depends; Eq_class.depends]
 end
 
-module InContext (L : Loc) : Class = struct
+module Builder(Loc : Defs.Loc) = struct
 
-  open Pa_deriving_common.Base
-  open Pa_deriving_common.Utils
-  open Pa_deriving_common.Type
+  module Helpers = Base.AstHelpers(Loc)
+  module Generator = Base.Generator(Loc)(Description)
+
+  open Loc
   open Camlp4.PreCast
-
-  open Description
-  open L
-  module Helpers = Pa_deriving_common.Base.InContext(L)(Description)
-  open Helpers
   open Description
 
   let bind, seq =
@@ -57,15 +54,26 @@ module InContext (L : Loc) : Class = struct
       <:str_item< open $uid:runtimename$.Read >>;
       <:str_item< let unpickle = $unpickler$ >> ]
 
-  let instance = object (self)
+  let generator = (object(self)
 
-    inherit make_module_expr
+    inherit Generator.generator
+
+    method proxy () =
+      None, [ <:ident< pickle >>;
+	      <:ident< unpickle >>;
+	      <:ident< to_buffer >>;
+	      <:ident< to_string >>;
+	      <:ident< to_channel >>;
+	      <:ident< from_stream >>;
+	      <:ident< from_string >>;
+	      <:ident< from_channel >>;
+	    ]
 
     method tuple ctxt tys =
       let ntys = List.length tys in
-      let ids, tpatt,texpr = tuple ~param:"id" ntys in
+      let ids, tpatt,texpr = Helpers.tuple ~param:"id" ntys in
       let picklers =
-	let eidlist = expr_list (List.map (fun id -> <:expr< $lid:id$ >>) ids) in
+	let eidlist = Helpers.expr_list (List.map (fun id -> <:expr< $lid:id$ >>) ids) in
         let inner =
           List.fold_right2
             (fun id ty expr ->
@@ -77,7 +85,7 @@ module InContext (L : Loc) : Class = struct
       and unpickler =
         let msg = "unexpected object encountered unpickling "
 	          ^ string_of_int ntys ^ "-tuple" in
-	let pidlist = patt_list (List.map (fun id -> <:patt< $lid:id$ >>) ids) in
+	let pidlist = Helpers.patt_list (List.map (fun id -> <:patt< $lid:id$ >>) ids) in
         let inner =
           List.fold_right2
             (fun id ty expr ->
@@ -95,7 +103,7 @@ module InContext (L : Loc) : Class = struct
     method case_pickle ctxt (name, params') n =
       let nparams = List.length params' in
       let ids = List.mapn (fun _ n -> Printf.sprintf "id%d" n) params' in
-      let svalue = expr_list (List.map (fun id -> <:expr< $lid:id$>>) ids) in
+      let svalue = Helpers.expr_list (List.map (fun id -> <:expr< $lid:id$>>) ids) in
       let repr =
 	<:expr< $uid:runtimename$.Repr.make ~constructor:$`int:n$ $svalue$ >> in
       let expr = <:expr< W.store_repr thisid $repr$ >> in
@@ -103,7 +111,7 @@ module InContext (L : Loc) : Class = struct
       | [] ->
 	  <:match_case< $uid:name$ as obj -> W.allocate obj (fun thisid -> $expr$) >>
       | _  ->
-	  let vs, tpatt, _ = tuple ~param:"v" nparams in
+	  let vs, tpatt, _ = Helpers.tuple ~param:"v" nparams in
 	  let bind_param p (id, v) expr =
 	    <:expr< $bind$ ($self#call_expr ctxt p "pickle"$ $lid:v$)
               (fun $lid:id$ -> $expr$)>> in
@@ -116,7 +124,7 @@ module InContext (L : Loc) : Class = struct
       | [] -> <:match_case< $`int:n$, [] -> return $uid:name$ >>
       | _ ->
 	  let nparams = List.length params' in
-	  let ids, _, texpr = tuple ~param:"id" nparams in
+	  let ids, _, texpr = Helpers.tuple ~param:"id" nparams in
 	  let ms = List.mapn (fun _ n -> Printf.sprintf "M%d" n) params' in
 	  let bind_param t (id, m) (pat, exp) =
               <:patt< $lid:id$ :: $pat$ >>,
@@ -144,16 +152,16 @@ module InContext (L : Loc) : Class = struct
     method record_pickler ctxt fields =
       let ids = List.map (fun (id,_,_) -> <:expr< $lid:id$ >>) fields in
       let expr =
-	<:expr< (W.store_repr this ($uid:runtimename$.Repr.make $expr_list ids$)) >> in
+	<:expr< (W.store_repr this ($uid:runtimename$.Repr.make $Helpers.expr_list ids$)) >> in
       let bind_field (id,(vars,t),_) e =
 	if vars <> [] then
-	  raise (Underivable (classname ^ " cannot be derived for record types "
+	  raise (Base.Underivable (classname ^ " cannot be derived for record types "
 			      ^ "with polymorphic fields"));
         <:expr< $bind$ ($self#call_expr ctxt t "pickle"$ $lid:id$)
                        (fun $lid:id$ -> $e$) >> in
       let inner = List.fold_right bind_field fields expr in
       <:match_case<
-	  ($record_pattern fields$ as obj) -> W.allocate obj (fun this -> $inner$) >>
+	  ($Helpers.record_pattern fields$ as obj) -> W.allocate obj (fun this -> $inner$) >>
 
 
     method record_unpickle ctxt tname fields =
@@ -169,7 +177,7 @@ module InContext (L : Loc) : Class = struct
 	<:expr< $bind$ ($self#call_expr ctxt t "unpickle"$ $lid:id$)
                        (fun $lid:id$ -> $exp$) >> in
       let inner = List.fold_right bind_field fields assignments in
-      let idpat = patt_list (List.map (fun (id,_,_) -> <:patt< $lid:id$ >>) fields) in
+      let idpat = Helpers.patt_list (List.map (fun (id,_,_) -> <:patt< $lid:id$ >>) fields) in
       let record =
 	<:expr< R.record
           (fun self -> function
@@ -177,10 +185,10 @@ module InContext (L : Loc) : Class = struct
             | _ -> raise ($uid:runtimename$.UnpicklingError $str:msg$))
 	  $`int:List.length fields$ >> in
       let mutable_type =
-	instantiate_modargs_repr ctxt.argmap
-	  (Record (List.map (fun (n,p,_) -> (n,p,`Mutable)) fields)) in
+	Generator.instantiate_modargs_repr ctxt
+	  (Type.Record (List.map (fun (n,p,_) -> (n,p,`Mutable)) fields)) in
       <:expr< let module Mutable = struct
-                type $Ast.TyDcl (_loc, "t", [], Untranslate.repr mutable_type, [])$
+                type $Ast.TyDcl (_loc, "t", [], Helpers.Untranslate.repr mutable_type, [])$
               end in $record$ >>
 
     method record ?eq ctxt tname params constraints (fields : Pa_deriving_common.Type.field list) =
@@ -190,13 +198,13 @@ module InContext (L : Loc) : Class = struct
 
 
     method polycase_pickle ctxt = function
-    | Tag (name, []) -> <:match_case<
+    | Type.Tag (name, []) -> <:match_case<
         (`$name$ as obj) ->
           W.allocate obj
               (fun thisid ->
                  W.store_repr thisid
                     ($uid:runtimename$.Repr.make ~constructor:$`int:tag_hash name$ [])) >>
-    | Tag (name, ts) -> <:match_case<
+    | Type.Tag (name, ts) -> <:match_case<
         (`$name$ v1 as obj) ->
            W.allocate obj
             (fun thisid ->
@@ -204,8 +212,8 @@ module InContext (L : Loc) : Class = struct
                     (fun mid ->
                     (W.store_repr thisid
                         ($uid:runtimename$.Repr.make ~constructor:$`int:tag_hash name$ [mid])))) >>
-    | Extends t ->
-        let patt, guard, cast = cast_pattern ctxt.argmap t in
+    | Type.Extends t ->
+        let patt, guard, cast = Generator.cast_pattern ctxt t in
 	<:match_case<
             ($patt$) when $guard$ ->
             ($self#call_expr ctxt t "pickle"$ $cast$) >>
@@ -241,7 +249,7 @@ module InContext (L : Loc) : Class = struct
 		(M.unpickle id :> a $uid:runtimename$.Read.m) >> in
         <:match_case< n,_ -> $List.fold_right try_extension tys fail$ >> in
       let tags, extensions = either_partition
-          (function Tag (name,t) -> Left (name,t) | Extends t -> Right t) tags in
+          (function Type.Tag (name,t) -> Left (name,t) | Type.Extends t -> Right t) tags in
       let tag_cases = List.map do_tag tags in
       let extension_case = do_extensions extensions in
       <:expr< fun id -> R.sum (function $list:tag_cases @ [extension_case]$) id >>
@@ -252,13 +260,11 @@ module InContext (L : Loc) : Class = struct
 	~picklers:(List.map (self#polycase_pickle ctxt) tags @ [ wildcard ])
 	~unpickler:(self#polycase_unpickler ctxt tname tags)
 
-end
+  end :> Generator.generator)
 
-  let make_module_expr = instance#rhs
-  let generate = default_generate ~make_module_expr ~make_module_type
-  let generate_sigs = default_generate_sigs ~make_module_sig
-  let generate_expr = instance#expr
+  let generate = Generator.generate generator
+  let generate_sigs = Generator.generate_sigs generator
 
 end
 
-module Pickle = Pa_deriving_common.Base.Register(Description)(InContext)
+module Dump = Base.Register(Description)(Builder)

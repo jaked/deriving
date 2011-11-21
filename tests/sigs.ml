@@ -1,5 +1,3 @@
-(*pp deriving *)
-
 (* Deriving a signature with types exposed *)
 module T :
 sig 

@@ -3,9 +3,10 @@
    See the file COPYING for details.
 *)
 
-open Pa_deriving_common.Defs
+open Pa_deriving_common
+open Utils
 
-module Description : ClassDescription = struct
+module Description : Defs.ClassDescription = struct
   let classname = "Bounded"
   let runtimename = "Deriving_Bounded"
   let default_module = None
@@ -26,22 +27,25 @@ module Description : ClassDescription = struct
   let depends = []
 end
 
-module InContext (L : Loc) : Class = struct
+module Builder(Loc : Defs.Loc) = struct
 
-  open Pa_deriving_common.Base
-  open Pa_deriving_common.Utils
-  open Pa_deriving_common.Type
+  module Helpers = Base.AstHelpers(Loc)
+  module Generator = Base.Generator(Loc)(Description)
+
+  open Loc
   open Camlp4.PreCast
-
-  open L
-  module Helpers = Pa_deriving_common.Base.InContext(L)(Description)
-  open Helpers
+  open Description
 
   let wrap min max =
     [ <:str_item< let min_bound = $min$ >>; <:str_item< let max_bound = $max$ >> ]
 
-  let instance = object (self)
-    inherit make_module_expr
+  let generator = (object (self)
+
+    inherit Generator.generator
+
+    method proxy unit =
+      None, [ <:ident< min_bound >>;
+	      <:ident< max_bound >>; ]
 
     method tuple ctxt ts =
       let expr t =
@@ -49,39 +53,44 @@ module InContext (L : Loc) : Class = struct
         <:expr< let module M = $e$ in M.min_bound >>,
         <:expr< let module M = $e$ in M.max_bound >> in
       let minBounds, maxBounds = List.split (List.map expr ts) in
-      wrap (tuple_expr minBounds) (tuple_expr maxBounds)
+      wrap (Helpers.tuple_expr minBounds) (Helpers.tuple_expr maxBounds)
 
     method sum ?eq ctxt tname params constraints summands =
       let extract_name = function
         | (name,[]) -> name
-        | (name,_) -> raise (Underivable ("Bounded cannot be derived for the type "
-                                          ^ tname ^ " because the constructor "
-                                          ^ name ^ " is not nullary")) in
+        | (name,_) ->
+	    raise (Base.Underivable
+		     (classname ^" cannot be derived for the type "
+                      ^ tname ^ " because the constructor "
+                      ^ name ^ " is not nullary")) in
       let names = List.map extract_name summands in
       wrap <:expr< $uid:List.hd names$ >> <:expr< $uid:List.last names$ >>
 
     method variant ctxt tname params constraints (_, tags) =
       let extract_name = function
-        | Tag (name, []) -> name
-        | Tag (name, _) -> raise (Underivable ("Bounded cannot be derived because "
-					       ^ "the tag " ^ name^" is not nullary"))
-        | _ -> raise (Underivable ("Bounded cannot be derived for this "
-                                   ^ "polymorphic variant type")) in
+        | Type.Tag (name, []) -> name
+        | Type.Tag (name, _) ->
+	    raise (Base.Underivable
+		     (classname^" cannot be derived because "
+		      ^ "the tag " ^ name^" is not nullary"))
+        | _ ->
+	    raise (Base.Underivable
+		     (classname^" cannot be derived for this "
+                      ^ "polymorphic variant type")) in
       let names = List.map extract_name tags in
       wrap <:expr< `$List.hd names$ >> <:expr< `$List.last names$ >>
 
     (* should perhaps implement this one *)
     method record ?eq _ tname params constraints =
-      raise (Underivable ("Bounded cannot be derived for record types (i.e. "
-                          ^ tname ^ ")"))
+      raise (Base.Underivable
+	       (classname^" cannot be derived for record types (i.e. "
+                ^ tname ^ ")"))
 
-  end
+  end :> Generator.generator)
 
-  let make_module_expr = instance#rhs
-  let generate = default_generate ~make_module_expr ~make_module_type
-  let generate_sigs = default_generate_sigs ~make_module_sig
-  let generate_expr = instance#expr
+  let generate = Generator.generate generator
+  let generate_sigs = Generator.generate_sigs generator
 
 end
 
-module Bounded = Pa_deriving_common.Base.Register(Description)(InContext)
+module Bounded = Base.Register(Description)(Builder)

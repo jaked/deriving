@@ -1,4 +1,5 @@
 (* Copyright Jeremy Yallop 2007.
+   Copyright Grégoire Henry 2011.
    This file is free software, distributed under the MIT license.
    See the file COPYING for details.
 *)
@@ -186,11 +187,13 @@ module Set = struct
 
   module type S = sig
     include Set.S
+    val toList : t -> elt list
     val fromList : elt list -> t
   end
 
   module Make (Ord : OrderedType) = struct
     include Set.Make(Ord)
+    let toList t = fold (fun x acc -> x :: acc) t []
     let fromList elems = List.fold_right add elems empty
   end
 
@@ -227,3 +230,12 @@ let _ =
   assert (tag_hash "premiums" = tag_hash "squigglier");
   assert (tag_hash "deriving" = 398308260);
   assert (tag_hash "Candela" = -1019855834)
+
+
+(* For type variable renaming *)
+
+let c = "abcdefghijklmnopqrstuvwxyz"
+
+let rec typevar_of_int x =
+  assert (x >= 0 && x < 26);
+  String.make 1 (c.[x])

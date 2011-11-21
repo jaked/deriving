@@ -1,5 +1,3 @@
-(*pp deriving *)
-
 (* sums (nullary, unary, and n-ary) *)
 type sum = S0 | S1 of int | S2 of int * float | S3 of int * float * bool | Sunit of unit | Stup of (int * float) | Stup1 of (int)
   deriving (Dump, Eq, Show, Typeable, Pickle)

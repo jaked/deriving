@@ -1,4 +1,5 @@
 (* Copyright Jeremy Yallop 2007.
+   Copyright Grégoire Henry 2011.
    This file is free software, distributed under the MIT license.
    See the file COPYING for details.
 *)
@@ -48,6 +49,24 @@ and poly_expr = param list * expr
 and variant = [ `Eq | `Gt | `Lt ] * tagspec list
 
 and tagspec = Tag of name * expr list | Extends of expr
+
+module ParamSet : Set.S with type elt = param
+module ParamMap : Map.S with type key = param
+module ExprSet : Set.S with type elt = expr
+module ExprMap : Map.S with type key = expr
+module ESet : Set.S with type elt = name * expr list
+module EMap : Map.S with type key = name * expr list
+
+val free_tvars : expr -> ParamSet.t
+val contains_tvars : expr -> bool
+val contains_tvars_decl : decl -> bool
+
+type subst = expr NameMap.t
+val build_subst : (name * expr) list -> subst
+val substitute_decl : subst -> decl -> decl
+val substitute_expr : subst -> expr -> expr
+val substitute_rhs : subst -> rhs -> rhs
+val substitute_constraint : subst -> constraint_ -> constraint_
 
 (** *)
 
@@ -135,6 +154,7 @@ module type Untranslate = sig
 
   val param : string * [< `Minus | `Plus ] option -> Ast.ctyp
   val qname : string list -> Ast.ident
+  val qName : string list -> Ast.ident
   val unlist :
     ('a -> Ast.ctyp -> Ast.ctyp) ->
     'b list -> ('b -> 'a) -> Ast.ctyp

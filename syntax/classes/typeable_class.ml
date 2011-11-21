@@ -3,9 +3,10 @@
    See the file COPYING for details.
 *)
 
-open Pa_deriving_common.Defs
+open Pa_deriving_common
+open Utils
 
-module Description : ClassDescription = struct
+module Description : Defs.ClassDescription = struct
   let classname = "Typeable"
   let runtimename = "Deriving_Typeable"
   let default_module = Some "Defaults"
@@ -30,40 +31,45 @@ module Description : ClassDescription = struct
   let depends = []
 end
 
-module InContext (L : Loc) = struct
+module Builder(Loc : Defs.Loc) = struct
 
-  open Pa_deriving_common.Base
-  open Pa_deriving_common.Utils
-  open Pa_deriving_common.Type
+  module Helpers = Base.AstHelpers(Loc)
+  module Generator = Base.Generator(Loc)(Description)
+
+  open Loc
   open Camlp4.PreCast
-
-  open L
-  module Helpers = Pa_deriving_common.Base.InContext(L)(Description)
-  open Helpers
-
-  include Description
+  open Description
 
   let mkName tname =
     let file_name, sl, _, _, _, _, _, _ = Loc.to_tuple _loc in
     Printf.sprintf "%s_%d_%f_%s" file_name sl (Unix.gettimeofday ()) tname
 
-  let wrap type_rep = [ <:str_item< let type_rep = $type_rep$ >> ]
+  let wrap type_rep = [ <:str_item< let type_rep = lazy $type_rep$ >> ]
 
-  let instance = object(self)
+  let generator = (object(self)
 
-    inherit make_module_expr
+    inherit Generator.generator
+
+    method proxy () =
+      None, [ <:ident< type_rep >>;
+	      <:ident< has_type >>;
+	      <:ident< cast >>;
+	      <:ident< throwing_cast >>;
+	      <:ident< make_dynamic >>;
+	      <:ident< mk >>;
+	    ]
 
     method tuple ctxt ts =
       let params =
         List.map (fun t -> <:expr< $self#call_expr ctxt t "type_rep"$ >>) ts in
-      wrap <:expr< $uid:runtimename$.TypeRep.mkTuple $expr_list params$ >>
+      wrap <:expr< $uid:runtimename$.TypeRep.mkTuple $Helpers.expr_list params$ >>
 
     method gen ?eq ctxt tname params constraints =
       let paramList =
 	List.fold_right
           (fun p cdr ->
             <:expr< $self#call_expr ctxt (`Param p) "type_rep"$ :: $cdr$ >>)
-          ctxt.params
+          params
 	  <:expr< [] >> in
       wrap <:expr< $uid:runtimename$.TypeRep.mkFresh $str:mkName tname$ $paramList$ >>
 
@@ -76,23 +82,26 @@ module InContext (L : Loc) = struct
       let tags, extends =
 	List.fold_left
           (fun (tags, extends) -> function
-            | Tag (l, [])  -> <:expr< ($str:l$, None) :: $tags$ >>, extends
-            | Tag (l, ts) ->
+            | Type.Tag (l, [])  -> <:expr< ($str:l$, None) :: $tags$ >>, extends
+            | Type.Tag (l, ts) ->
 		<:expr< ($str:l$, Some $self#call_expr ctxt (`Tuple ts) "type_rep"$) ::$tags$ >>,
 		extends
-            | Extends t ->
+            | Type.Extends t ->
 		tags,
 		<:expr< $self#call_expr ctxt t "type_rep"$::$extends$ >>)
           (<:expr< [] >>, <:expr< [] >>) tags in
       wrap <:expr< $uid:runtimename$.TypeRep.mkPolyv $tags$ $extends$ >>
-  end
 
-  let make_module_expr = instance#rhs
-  let generate = default_generate ~make_module_expr ~make_module_type
-  let generate_sigs = default_generate_sigs ~make_module_sig
-  let generate_expr = instance#expr
+  end :> Generator.generator)
+
+  let classname = Description.classname
+  let runtimename = Description.runtimename
+  let generate = Generator.generate generator
+  let generate_sigs = Generator.generate_sigs generator
+  let generate_expr = Generator.generate_expr generator
 
 end
 
-module Typeable = Pa_deriving_common.Base.Register(Description)(InContext)
-let depends = (module InContext : ClassDependency)
+module Typeable = Base.Register(Description)(Builder)
+
+let depends = (module Builder : Defs.FullClassBuilder)

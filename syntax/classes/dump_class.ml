@@ -3,9 +3,10 @@
    See the file COPYING for details.
 *)
 
-open Pa_deriving_common.Defs
+open Pa_deriving_common
+open Utils
 
-module Description : ClassDescription = struct
+module Description : Defs.ClassDescription = struct
   let classname = "Dump"
   let runtimename = "Deriving_Dump"
   let default_module = Some "Defaults"
@@ -29,25 +30,30 @@ module Description : ClassDescription = struct
   let depends = []
 end
 
-module InContext (L : Loc) : Class = struct
+module Builder(Loc : Defs.Loc) = struct
 
-  open Pa_deriving_common.Base
-  open Pa_deriving_common.Utils
-  open Pa_deriving_common.Type
+  module Helpers = Base.AstHelpers(Loc)
+  module Generator = Base.Generator(Loc)(Description)
+
+  open Loc
   open Camlp4.PreCast
-
-  open L
-  module Helpers = Pa_deriving_common.Base.InContext(L)(Description)
-  open Helpers
   open Description
 
   let wrap ?(buffer="buffer") ?(stream="stream") to_buffer from_stream =
     [ <:str_item< let to_buffer $lid:buffer$ = function $list:to_buffer$ >> ;
       <:str_item< let from_stream $lid:stream$ = $from_stream$ >> ]
 
-  let instance = object (self)
+  let generator = (object (self)
 
-    inherit make_module_expr
+    inherit Generator.generator
+
+    method proxy unit =
+      None, [ <:ident< to_buffer >>;
+	      <:ident< to_string >>;
+	      <:ident< to_channel >>;
+	      <:ident< from_stream >>;
+	      <:ident< from_string >>;
+	      <:ident< from_channel >>; ]
 
     method dump_int ctxt n =
       <:expr< $self#call_expr ctxt (`Constr (["int"],[])) "to_buffer"$
@@ -63,14 +69,13 @@ module InContext (L : Loc) : Class = struct
       let from_stream id ty e =
         <:expr< let $lid:id$ = $self#call_expr ctxt ty "from_stream"$ stream in
                 $e$ >> in
-      seq_list (List.map2 to_buffer tvars args),
+      Helpers.seq_list (List.map2 to_buffer tvars args),
       (fun expr -> List.fold_right2 from_stream tvars args expr)
 
     method tuple ctxt tys =
-      let tvars, patt, expr = tuple (List.length tys) in
+      let tvars, patt, expr = Helpers.tuple (List.length tys) in
       let dumper, undump = self#nargs ctxt tvars tys in
       wrap [ <:match_case< $patt$ -> $dumper$ >> ] (undump expr)
-
 
     method case ctxt (ctor,args) n =
       match args with
@@ -78,7 +83,7 @@ module InContext (L : Loc) : Class = struct
 	  <:match_case< $uid:ctor$ -> $self#dump_int ctxt n$ >>,
           <:match_case< $`int:n$ -> $uid:ctor$ >>
       | _ ->
-        let tvars, patt, expr = tuple (List.length args) in
+        let tvars, patt, expr = Helpers.tuple (List.length args) in
 	let expr = <:expr< $uid:ctor$ $expr$ >> in
         let dumper, undumper = self#nargs ctxt tvars args in
 	<:match_case< $uid:ctor$ $patt$ -> $self#dump_int ctxt n$; $dumper$ >>,
@@ -98,36 +103,43 @@ module InContext (L : Loc) : Class = struct
 
     method field ctxt (name, (vars, ty), mut) =
       if mut = `Mutable then
-        raise (Underivable (classname ^ " cannot be derived for record types "
-			    ^ " with mutable fields (" ^ name ^ ")"));
+        raise (Base.Underivable
+		 (classname ^ " cannot be derived for record types "
+		  ^ " with mutable fields (" ^ name ^ ")"));
       if vars <> [] then
-	raise (Underivable (classname ^ " cannot be derived for record types "
-			    ^ "with polymorphic fields"));
+	raise (Base.Underivable
+		 (classname ^ " cannot be derived for record types "
+		  ^ "with polymorphic fields"));
       <:expr< $self#call_expr ctxt ty "to_buffer"$ buffer $lid:name$ >>,
       <:binding< $lid:name$ = $self#call_expr ctxt ty "from_stream"$ stream >>
 
     method record ?eq ctxt tname params constraints fields =
        let dumpers, undumpers = List.split (List.map (self#field ctxt) fields) in
        let bind b e = <:expr< let $b$ in $e$ >> in
-       let undump = List.fold_right bind undumpers (record_expression fields) in
-       let dumper = <:match_case< $record_pattern fields$ -> $seq_list dumpers$ >> in
+       let undump = List.fold_right bind undumpers (Helpers.record_expression fields) in
+       let dumper =
+	 <:match_case<
+	   $Helpers.record_pattern fields$
+	   -> $Helpers.seq_list dumpers$
+         >>
+       in
        wrap [dumper] undump
 
 
     method polycase ctxt tagspec n : Ast.match_case * Ast.match_case =
       match tagspec with
-      | Tag (name, []) ->
+      | Type.Tag (name, []) ->
 	    <:match_case< `$name$ -> $self#dump_int ctxt n$ >>,
             <:match_case< $`int:n$ -> `$name$ >>
-      | Tag (name, es) ->
+      | Type.Tag (name, es) ->
 	    let to_buffer =
 	      <:expr< $self#call_expr ctxt (`Tuple es) "to_buffer"$ buffer x >> in
 	    let from_stream =
 	      <:expr< $self#call_expr ctxt (`Tuple es) "from_stream"$ stream >> in
 	    <:match_case< `$name$ x -> $self#dump_int ctxt n$; $to_buffer$ >>,
             <:match_case< $`int:n$ -> `$name$ ($from_stream$) >>
-      | Extends t ->
-          let patt, guard, cast = cast_pattern ctxt.argmap t in
+      | Type.Extends t ->
+          let patt, guard, cast = Generator.cast_pattern ctxt t in
 	  let to_buffer =
 	    <:expr< $self#call_expr ctxt t "to_buffer"$ buffer $cast$ >> in
 	  let from_stream =
@@ -147,13 +159,11 @@ module InContext (L : Loc) : Class = struct
       in
       wrap (dumpers @ [ <:match_case< _ -> assert false >>]) undumpers
 
-  end
+  end :> Generator.generator)
 
-  let make_module_expr = instance#rhs
-  let generate = default_generate ~make_module_expr ~make_module_type
-  let generate_sigs = default_generate_sigs ~make_module_sig
-  let generate_expr = instance#expr
+  let generate = Generator.generate generator
+  let generate_sigs = Generator.generate_sigs generator
 
 end
 
-module Dump = Pa_deriving_common.Base.Register(Description)(InContext)
+module Dump = Base.Register(Description)(Builder)
