@@ -4,19 +4,14 @@ library by Jeremy Yallop. See:
   http://code.google.com/p/deriving/
   https://github.com/jaked/deriving
 
-Main changes are:
-
- - ocamlfind compatibility
- - type-conv compatibility mode
- - simplify the definition of new class
- - fix small bugs
+See CHANGES for a summary of changes.
 
 ######
 
 Requirements:
 =============
 
- * ocaml and camlp4
+ * ocaml and camlp4 (>= 3.12)
  * type-conv (optionnal)
 
 Build intructions:
