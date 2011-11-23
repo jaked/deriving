@@ -6,6 +6,7 @@ archive(byte)   = "deriving.cma"
 archive(native) = "deriving.cmxa"
 
 package "syntax" (
+  exists_if = "pa_deriving.cma"
   requires(syntax) = "camlp4,unix"
   requires(syntax, toploop) += "%%NAME%%"
   archive(syntax, preprocessor) = "pa_deriving.cma"
