@@ -44,7 +44,7 @@ deriving.cmxa: ${SOURCES:.ml=.cmx}
 
 # Clean up
 clean:
-	-rm -f *.cm[ioax] *.cmxa *.cmxs *.o *.a *.annot
+	-rm -f *.cm[ioax] *.cmxa *.cmxs *${OBJEXT} *${LIBEXT} *.annot
 distclean: clean
 	-rm -f *~ \#* .\#*
 

@@ -24,7 +24,7 @@ SOURCES = defs.ml               \
 
 ##
 
-tests: ${SOURCES:.ml=.cmo}
+tests${EXEEXT}: ${SOURCES:.ml=.cmo}
 	${OCAMLC} -o $@ ${LIBS} -linkpkg deriving.cma $^
 
 # Common rules
@@ -38,8 +38,8 @@ tests: ${SOURCES:.ml=.cmo}
 
 # Clean up
 clean:
-	-rm -f *.cm[ioax] *.cmxa *.cmxs *.o *.a *.annot
-	-rm -f tests
+	-rm -f *.cm[ioax] *.cmxa *.cmxs *${OBJEXT} *${LIBEXT} *.annot
+	-rm -f tests${EXEEXT}
 distclean: clean
 	-rm -f *~ \#* .\#*
 

@@ -57,8 +57,8 @@ PREDEP := id.ml
 
 all: byte opt
 
-byte:: pa_deriving.cma deriving
-opt:: pa_deriving.cmxa deriving.opt
+byte:: pa_deriving.cma deriving${EXEEXT}
+opt:: pa_deriving.cmxa deriving.opt${EXEEXT}
 
 ifneq (${TYPECONV},)
 byte:: pa_deriving_tc.cma
@@ -90,11 +90,11 @@ ${SOURCES:.ml=.cmx}: FOR_PACK=-for-pack Pa_deriving_common
 
 ##
 
-deriving: pa_deriving.cma
+deriving${EXEEXT}: pa_deriving.cma
 	${OCAMLC} -linkpkg -o $@ \
 	  ${DERIVING_LIBS} ${CAMLP4_PREFILES} $^ ${CAMLP4_POSTFILES}
 
-deriving.opt: pa_deriving.cmxa
+deriving.opt${EXEEXT}: pa_deriving.cmxa
 	${OCAMLOPT} -linkpkg -o $@ \
 	  ${DERIVING_LIBS} ${CAMLP4_PREFILES:.cmo=.cmx} $^ ${CAMLP4_POSTFILES:.cmo=.cmx}
 
@@ -119,8 +119,8 @@ id.ml: id.mlp ../Makefile.config ../VERSION
 # Clean up
 
 clean:
-	-rm -f *.cm[ioax] *.cmxa *.cmxs *.o *.a *.annot
-	-rm -f deriving deriving.opt
+	-rm -f *.cm[ioax] *.cmxa *.cmxs *${OBJEXT} *${LIBEXT} *.annot
+	-rm -f deriving${EXEEXT} deriving.opt${EXEEXT}
 distclean: clean
 	-rm -f .*.deps classes/.*.deps
 	-rm -f *~ \#* .\#*
