@@ -31,3 +31,7 @@ NATIMPL += syntax/pa_deriving_tc.cmx \
            syntax/pa_deriving_tc.cmxa \
 
 endif
+
+NOMLI := syntax/pa_deriving_common.mli
+
+DOC := ${filter-out ${NOMLI}, ${INTF:.cmi=.mli}}

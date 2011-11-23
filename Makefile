@@ -39,17 +39,17 @@ VERSION := $(shell head -n 1 VERSION)
 install:
 	${OCAMLFIND} install ${PROJECTNAME} \
 	  -patch-version ${VERSION} \
-	  META ${INTF} ${IMPL} ${NATIMPL}
+	  META ${SYNTAX_INTF} ${INTF} ${IMPL} ${NATIMPL} ${DOC}
 
 install-byte:
 	${OCAMLFIND} install ${PROJECTNAME} \
 	  -patch-version ${VERSION} \
-	  META ${INTF} ${IMPL}
+	  META ${SYNTAX_INTF} ${INTF} ${IMPL} ${DOC}
 
 install-opt:
 	${OCAMLFIND} install ${PROJECTNAME} \
 	  -patch-version ${VERSION} \
-	  META ${INTF} ${NATIMPL}
+	  META ${SYNTAX_INTF} ${INTF} ${NATIMPL} ${DOC}
 
 uninstall:
 	${OCAMLFIND} remove ${PROJECTNAME}
