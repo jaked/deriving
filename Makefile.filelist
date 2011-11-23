@@ -23,6 +23,11 @@ NATIMPL := syntax/pa_deriving_common.cmx \
            lib/deriving.cmxa \
            lib/deriving$(LIBEXT) \
 
+ifeq "${NATDYNLINK}" "YES"
+NATIMPL += syntax/pa_deriving.cmxs \
+	   lib/deriving.cmxs
+endif
+
 ifneq (${TYPECONV},)
 
 IMPL += syntax/pa_deriving_tc.cmo \
@@ -31,6 +36,10 @@ IMPL += syntax/pa_deriving_tc.cmo \
 NATIMPL += syntax/pa_deriving_tc.cmx \
            syntax/pa_deriving_tc.cmxa \
            syntax/pa_deriving_tc$(LIBEXT) \
+
+ifeq "${NATDYNLINK}" "YES"
+NATIMPL += syntax/pa_deriving_tc.cmxs
+endif
 
 endif
 

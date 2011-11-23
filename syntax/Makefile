@@ -59,10 +59,16 @@ all: byte opt
 
 byte:: pa_deriving.cma deriving${EXEEXT}
 opt:: pa_deriving.cmxa deriving.opt${EXEEXT}
+ifeq "${NATDYNLINK}" "YES"
+opt::  pa_deriving.cmxs
+endif
 
 ifneq (${TYPECONV},)
 byte:: pa_deriving_tc.cma
 opt:: pa_deriving_tc.cmxa
+ifeq "${NATDYNLINK}" "YES"
+opt::  pa_deriving_tc.cmxs
+endif
 endif
 
 ##
@@ -115,6 +121,8 @@ id.ml: id.mlp ../Makefile.config ../VERSION
 	${OCAMLC} ${LIBS} -c $<
 %.cmx: %.ml
 	${OCAMLOPT} ${LIBS} ${FOR_PACK} -c $<
+%.cmxs: %.cmxa
+	$(OCAMLOPT) -shared -linkall -o $@ $<
 
 # Clean up
 

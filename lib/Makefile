@@ -24,7 +24,10 @@ SOURCES = deriving_Show.ml           \
 all: byte opt
 
 byte: deriving.cma
-opt: deriving.cmxa
+opt:: deriving.cmxa
+ifeq "${NATDYNLINK}" "YES"
+opt:: deriving.cmxs
+endif
 
 ##
 
@@ -41,6 +44,8 @@ deriving.cmxa: ${SOURCES:.ml=.cmx}
 	${OCAMLC} ${OCAMLFLAGS} ${PP} -c $<
 %.cmx: %.ml
 	${OCAMLOPT} ${OCAMLFLAGS} ${PP} -c $<
+%.cmxs: %.cmxa
+	$(OCAMLOPT) -shared -linkall -o $@ $<
 
 # Clean up
 clean:
