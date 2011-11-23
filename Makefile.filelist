@@ -11,14 +11,10 @@ INTF := syntax/pa_deriving_common.cmi \
 	lib/deriving_Eq.cmi \
 	lib/deriving_Pickle.cmi \
 
-IMPL := syntax/pa_deriving_common.cmo \
-        syntax/pa_deriving.cmo \
-        syntax/pa_deriving.cma \
+IMPL := syntax/pa_deriving.cma \
         lib/deriving.cma \
 
-NATIMPL := syntax/pa_deriving_common.cmx \
-           syntax/pa_deriving.cmx \
-           syntax/pa_deriving.cmxa \
+NATIMPL := syntax/pa_deriving.cmxa \
            syntax/pa_deriving$(LIBEXT) \
            lib/deriving.cmxa \
            lib/deriving$(LIBEXT) \
@@ -30,11 +26,9 @@ endif
 
 ifneq (${TYPECONV},)
 
-IMPL += syntax/pa_deriving_tc.cmo \
-        syntax/pa_deriving_tc.cma \
+IMPL += syntax/pa_deriving_tc.cma \
 
-NATIMPL += syntax/pa_deriving_tc.cmx \
-           syntax/pa_deriving_tc.cmxa \
+NATIMPL += syntax/pa_deriving_tc.cmxa \
            syntax/pa_deriving_tc$(LIBEXT) \
 
 ifeq "${NATDYNLINK}" "YES"
