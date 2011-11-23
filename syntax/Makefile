@@ -57,8 +57,8 @@ PREDEP := id.ml
 
 all: byte opt
 
-byte:: pa_deriving.cma deriving${EXEEXT}
-opt:: pa_deriving.cmxa deriving.opt${EXEEXT}
+byte:: pa_deriving.cma
+opt:: pa_deriving.cmxa
 ifeq "${NATDYNLINK}" "YES"
 opt::  pa_deriving.cmxs
 endif
@@ -70,6 +70,10 @@ ifeq "${NATDYNLINK}" "YES"
 opt::  pa_deriving_tc.cmxs
 endif
 endif
+
+bin: bin-byte bin-opt
+bin-byte: deriving${EXEEXT}
+bin-opt: deriving.opt${EXEEXT}
 
 ##
 
