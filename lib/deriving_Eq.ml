@@ -9,8 +9,6 @@ sig
   val eq : a -> a -> bool
 end
 
-module Defaults (E : Eq) = E
-
 module Eq_immutable(S : sig type a end) :
   Eq with type a = S.a =
 struct
@@ -25,6 +23,7 @@ struct
   let eq = (==)
 end
 
+module Eq_alpha(S : sig type a end) = struct type a = S.a let eq _ _ = assert false end
 module Eq_int = Eq_immutable(struct type a = int end)
 module Eq_bool = Eq_immutable(struct type a = bool end)
 module Eq_float = Eq_immutable(struct type a = float end)

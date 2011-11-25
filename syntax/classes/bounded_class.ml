@@ -10,6 +10,7 @@ module Description : Defs.ClassDescription = struct
   let classname = "Bounded"
   let runtimename = "Deriving_Bounded"
   let default_module = None
+  let alpha = None
   let allow_private = false
   let predefs = [
     ["unit"], "unit";

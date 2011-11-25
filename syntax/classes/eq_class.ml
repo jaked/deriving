@@ -10,6 +10,7 @@ module Description : Defs.ClassDescription = struct
   let classname = "Eq"
   let runtimename = "Deriving_Eq"
   let default_module = None
+  let alpha = Some "Eq_alpha"
   let allow_private = true
   let predefs = [
     ["unit"], "unit";
@@ -84,13 +85,9 @@ module Builder(Loc : Defs.Loc) = struct
       wrap (List.map (self#case ctxt) summands @ wildcard)
 
 
-    method field ctxt (name, (vars, ty), mut) =
+    method field ctxt (name, ty, mut) =
       assert(mut <> `Mutable);
-      if vars <> [] then
-	raise (Base.Underivable
-		 (classname ^ " cannot be derived for record types "
-		  ^ "with polymorphic fields"));
-      <:expr< $self#call_expr ctxt ty "eq"$ $lid:lprefix ^ name$ $lid:rprefix ^ name$ >>
+      <:expr< $self#call_poly_expr ctxt ty "eq"$ $lid:lprefix ^ name$ $lid:rprefix ^ name$ >>
 
     method record ?eq ctxt tname params constraints fields =
       if List.exists (function (_,_,`Mutable) -> true | _ -> false) fields then

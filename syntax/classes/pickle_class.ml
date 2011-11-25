@@ -10,6 +10,7 @@ module Description : Defs.ClassDescription = struct
   let classname = "Pickle"
   let runtimename = "Deriving_Pickle"
   let default_module = Some "Defaults"
+  let alpha = None
   let allow_private = false
   let predefs = [
     ["int"], "int";
@@ -153,11 +154,8 @@ module Builder(Loc : Defs.Loc) = struct
       let ids = List.map (fun (id,_,_) -> <:expr< $lid:id$ >>) fields in
       let expr =
 	<:expr< (W.store_repr this ($uid:runtimename$.Repr.make $Helpers.expr_list ids$)) >> in
-      let bind_field (id,(vars,t),_) e =
-	if vars <> [] then
-	  raise (Base.Underivable (classname ^ " cannot be derived for record types "
-			      ^ "with polymorphic fields"));
-        <:expr< $bind$ ($self#call_expr ctxt t "pickle"$ $lid:id$)
+      let bind_field (id,t,_) e =
+        <:expr< $bind$ ($self#call_poly_expr ctxt t "pickle"$ $lid:id$)
                        (fun $lid:id$ -> $e$) >> in
       let inner = List.fold_right bind_field fields expr in
       <:match_case<
@@ -172,9 +170,8 @@ module Builder(Loc : Defs.Loc) = struct
             <:expr< this.Mutable.$lid:id$ <- $lid:id$; $exp$ >>)
           fields
 	  <:expr< return self >> in
-      let bind_field (id,(vars,t),_) exp =
-	assert (vars = []);
-	<:expr< $bind$ ($self#call_expr ctxt t "unpickle"$ $lid:id$)
+      let bind_field (id,t,_) exp =
+	<:expr< $bind$ ($self#call_poly_expr ctxt t "unpickle"$ $lid:id$)
                        (fun $lid:id$ -> $exp$) >> in
       let inner = List.fold_right bind_field fields assignments in
       let idpat = Helpers.patt_list (List.map (fun (id,_,_) -> <:patt< $lid:id$ >>) fields) in

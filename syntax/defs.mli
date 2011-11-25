@@ -33,6 +33,7 @@ module type ClassDescription = sig
   val classname: Type.name
   val runtimename: Type.name
   val default_module: Type.name option
+  val alpha: Type.name option
   val allow_private: bool
   val predefs: (Type.qname * Type.name) list
   val depends: (module FullClassBuilder) list

@@ -24,7 +24,7 @@ type r3 = {
 (* polymorphic records *)
 type r4 = {
   r4_l1 : 'a . 'a list
-} (* deriving (Dump, Eq, Show, Typeable, Pickle) *)
+} deriving (Dump, Eq, Show)
 
 (* label types *)
 type label = x:int -> int
@@ -42,7 +42,7 @@ type 'a seq = Nil | Cons of 'a * 'a seq
   deriving (Dump, Eq, Show, Functor, Typeable, Pickle)
 
 (* applied type constructors (nullary, n-ary) *)
-type uses_seqs = (intseq * float seq) 
+type uses_seqs = (intseq * float seq)
     deriving (Dump, Eq, Show, Typeable, Pickle)
 
 (* object and class types *)
@@ -63,10 +63,10 @@ type poly2 = P of int * [`T0 | `T1 of int] * float
 
 (* `as'-recursion *)
 type poly3 = [`Nil | `Cons of int * 'c] as 'c
-    deriving (Dump, Eq, Show, Typeable, Pickle) 
+    deriving (Dump, Eq, Show, Typeable, Pickle)
 
 type poly3b = int * ([`Nil | `Cons of int * 'c] as 'c) * [`F]
-    deriving (Dump, Eq, Show, Typeable, Pickle) 
+    deriving (Dump, Eq, Show, Typeable, Pickle)
 
 (* <, >, =, > < polymorphic variants *)
 type 'a poly7 = Foo of [`F of 'a]
@@ -94,6 +94,12 @@ and ('a,'b) pmutrec_c = SS of 'a * ('a,'b) pmutrec_a * 'b
 and ('a,'b) pmutrec_d = [`T of ('a,'b) pmutrec_b]
     deriving (Dump, Eq, Show, Functor, Typeable, Pickle)
 
+type 'a pmutrec_a' = ('a,'a) pmutrec_c'
+and ('a,'b) pmutrec_b' = { pl1' : ('b,'a) pmutrec_c' ; pl2' : 'a pmutrec_a' }
+and ('a,'b) pmutrec_c' = SS' of 'a * 'b pmutrec_a' * 'b | TT' of ('a * ('a,'b,'a) pmutrec_d' * 'b)
+and ('a,'b,'c) pmutrec_d' = [ `S of ('a,'b) pmutrec_b' | `T of ('b,'c) pmutrec_b' ]
+    deriving (Dump, Eq, Show, Functor, Typeable, Pickle)
+
 (* polymorphic types *)
 type 'a ff1 = F of 'a * 'a | G of int deriving (Show, Eq, Dump, Functor, Typeable, Pickle)
 type ('a,'b) ff2 = F1 of ('a,'b) ff2 | F2 of 'a seq * int * 'b option
@@ -117,7 +123,7 @@ type withref = WR of int * (int ref)
   deriving (Eq, Show, Typeable, Pickle)
 
 (* through module boundaries *)
-module rec M : sig 
+module rec M : sig
   type t deriving (Show, Eq, Dump)
 end =
 struct
@@ -125,12 +131,12 @@ struct
 end
 
 (* parameterized types through module boundaries *)
-module rec P : sig 
+module rec P : sig
   type 'a t (* deriving (Show) *)
 end =
 struct
-  type 'a t = [`N|`C of 'a P.t] 
-(*Doesn't work: results in an unsafe module definition 
+  type 'a t = [`N|`C of 'a P.t]
+(*Doesn't work: results in an unsafe module definition
 *)(*      deriving (Show)*)
 end
 
@@ -139,9 +145,9 @@ type 'a constrained = [`F of 'a] constraint 'a = int
     deriving (Functor) (* Show, etc. don't work here *)
 
 (* private datatypes *)
-type p1 = private P1 
+type p1 = private P1
     deriving (Show, Eq)
-    
+
 (* check that `private' in the interface is allowed for classes that
    disallow `private' (e.g. Dump) as long as we don't have `private'
    in the implementation *)
@@ -153,7 +159,7 @@ struct
 end
 
 (* Reusing existing instances *)
-type t = int 
+type t = int
     deriving (Eq, Enum, Bounded, Dump, Show, Typeable, Pickle, Functor)
 
 (* Int32, etc. *)

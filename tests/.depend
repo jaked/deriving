@@ -4,22 +4,23 @@ bounded_tests.cmo: defs.cmo
 bounded_tests.cmx: defs.cmx
 defs.cmo:
 defs.cmx:
-defs_simple.cmo: defs_simple.cmi
-defs_simple.cmx: defs_simple.cmi
 dump_tests.cmo: defs.cmo
 dump_tests.cmx: defs.cmx
 enum_tests.cmo: defs.cmo
 enum_tests.cmx: defs.cmx
 eq_tests.cmo: defs.cmo
 eq_tests.cmx: defs.cmx
+exp.cmo: bimap.cmo
+exp.cmx: bimap.cmx
 functor_tests.cmo: defs.cmo
 functor_tests.cmx: defs.cmx
 inline.cmo:
 inline.cmx:
+pickle_tests.cmo: defs.cmo
+pickle_tests.cmx: defs.cmx
 show_tests.cmo:
 show_tests.cmx:
 sigs.cmo: defs.cmo
 sigs.cmx: defs.cmx
 typeable_tests.cmo:
 typeable_tests.cmx:
-defs_simple.cmi:

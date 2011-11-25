@@ -10,6 +10,7 @@ module Description : Defs.ClassDescription = struct
   let classname = "Show"
   let runtimename = "Deriving_Show"
   let default_module = Some "Defaults"
+  let alpha = Some "Show_unprintable"
   let allow_private = true
   let predefs = [
     ["int"      ], "int";
@@ -105,13 +106,9 @@ module Builder(Loc : Defs.Loc) = struct
       wrap (List.map (self#case ctxt) summands)
 
 
-    method field ctxt (name, (vars, ty), mut) =
-      if vars <> [] then
-	raise (Base.Underivable (classname
-				 ^ " cannot be derived for record types "
-				 ^ "with polymorphic fields"));
+    method field ctxt (name, ty, mut) =
       <:expr< Format.pp_print_string formatter $str:name ^ " = "$;
-              $self#call_expr ctxt ty "format"$ formatter $lid:name$ >>
+              $self#call_poly_expr ctxt ty "format"$ formatter $lid:name$ >>
 
     method record ?eq ctxt tname params constraints fields =
       let format_fields =

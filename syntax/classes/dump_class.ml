@@ -10,6 +10,7 @@ module Description : Defs.ClassDescription = struct
   let classname = "Dump"
   let runtimename = "Deriving_Dump"
   let default_module = Some "Defaults"
+  let alpha = Some "Dump_alpha"
   let allow_private = false
   let predefs = [
     ["unit"], "unit";
@@ -101,17 +102,13 @@ module Builder(Loc : Defs.Loc) = struct
       wrap dumpers undumpers
 
 
-    method field ctxt (name, (vars, ty), mut) =
+    method field ctxt (name, ty, mut) =
       if mut = `Mutable then
         raise (Base.Underivable
 		 (classname ^ " cannot be derived for record types "
 		  ^ " with mutable fields (" ^ name ^ ")"));
-      if vars <> [] then
-	raise (Base.Underivable
-		 (classname ^ " cannot be derived for record types "
-		  ^ "with polymorphic fields"));
-      <:expr< $self#call_expr ctxt ty "to_buffer"$ buffer $lid:name$ >>,
-      <:binding< $lid:name$ = $self#call_expr ctxt ty "from_stream"$ stream >>
+      <:expr< $self#call_poly_expr ctxt ty "to_buffer"$ buffer $lid:name$ >>,
+      <:binding< $lid:name$ = $self#call_poly_expr ctxt ty "from_stream"$ stream >>
 
     method record ?eq ctxt tname params constraints fields =
        let dumpers, undumpers = List.split (List.map (self#field ctxt) fields) in

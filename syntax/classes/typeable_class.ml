@@ -10,6 +10,7 @@ module Description : Defs.ClassDescription = struct
   let classname = "Typeable"
   let runtimename = "Deriving_Typeable"
   let default_module = Some "Defaults"
+  let alpha = None
   let allow_private = true
   let predefs = [
     ["int"], "int";

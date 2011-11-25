@@ -379,6 +379,7 @@ module Pickle_from_dump
   (E : Eq with type a = P.a)
   (T : Typeable with type a = P.a)
   : Pickle with type a = P.a
+           and type a = E.a
            and type a = T.a = Defaults
   (struct
      type a = T.a

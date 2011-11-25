@@ -10,6 +10,7 @@ module Description : Defs.ClassDescription = struct
   let classname = "Enum"
   let runtimename = "Deriving_Enum"
   let default_module = Some "Defaults"
+  let alpha = None
   let allow_private = false
   let predefs = [
     ["int"], "int";

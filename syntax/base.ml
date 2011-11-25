@@ -277,6 +277,31 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
 
     method call_expr ctxt ty name = Helpers.mproject (self#expr ctxt ty) name
 
+    method call_poly_expr ctxt (params, ty : Type.poly_expr) name =
+      match Desc.alpha with
+      | None when params <> [] ->
+	  raise (Underivable
+		 (Desc.classname ^ " cannot be derived for record types "
+		  ^ "with polymorphic fields"))
+      | None -> self#call_expr ctxt ty name
+      | Some mod_name ->
+	let ctxt =
+	  { ctxt with
+	    argmap = List.fold_left
+	      (fun argmap (pname, _) -> NameMap.add pname ["M_"^pname] argmap)
+	      ctxt.argmap params}
+	in
+	let expr = self#call_expr ctxt ty name in
+	List.fold_right
+	  (fun (pname,_) expr ->
+	    (* This is not a function... much more a scope for a type variable... *)
+	    <:expr< fun (type t) ->
+	              let module $uid:"M_"^pname$ =
+			    $uid:Desc.runtimename$.$uid:mod_name$(struct type a = t end) in
+		      $expr$ >>)
+	  params
+	  expr
+
     (* *)
 
     method class_sig argmap ty =

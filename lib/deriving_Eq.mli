@@ -8,11 +8,10 @@ sig
   val eq : a -> a -> bool
 end
 
-module Defaults (E : Eq) : Eq with type a = E.a
-
 module Eq_immutable (S : sig type a end) : Eq with type a = S.a
 module Eq_mutable (S : sig type a end) : Eq with type a = S.a
 
+module Eq_alpha(S : sig type a end) : Eq with type a = S.a
 module Eq_int            : Eq with type a = int
 module Eq_num            : Eq with type a = Num.num
 module Eq_bool           : Eq with type a = bool

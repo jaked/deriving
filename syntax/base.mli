@@ -72,6 +72,7 @@ module Generator(Loc: Loc)(Desc : ClassDescription) : sig
     method wrap: context -> ?default:Type.name option -> Type.expr -> Ast.str_item list -> Ast.module_expr
 
     method call_expr: context -> Type.expr -> string -> Ast.expr
+    method call_poly_expr: context -> Type.poly_expr -> string -> Ast.expr
 
     method virtual proxy: unit -> Type.name option * Ast.ident list
     method virtual sum:

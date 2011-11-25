@@ -220,6 +220,12 @@ module Dump_unit = Defaults (
   end
 )
 
+module Dump_alpha(P: sig type a end) = Defaults(struct
+  type a = P.a
+  let to_buffer _ _ = assert false
+  let from_stream _ = assert false
+end)
+
 module Dump_num = Defaults (
   struct
     (* TODO: a less wasteful dumper for nums.  A good start would be

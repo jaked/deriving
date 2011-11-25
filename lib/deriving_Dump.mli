@@ -31,7 +31,9 @@ module Dump_unit      : Dump with type a = unit
 module Dump_list   (P : Dump) : Dump with type a = P.a list
 module Dump_option (P : Dump) : Dump with type a = P.a option
 
-module Dump_undumpable (P : sig type a val tname : string end) 
+module Dump_undumpable (P : sig type a val tname : string end)
   : Dump with type a = P.a
-module Dump_via_marshal (P : sig type a end) 
+module Dump_via_marshal (P : sig type a end)
+  : Dump with type a = P.a
+module Dump_alpha (P : sig type a end)
   : Dump with type a = P.a

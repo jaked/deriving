@@ -10,6 +10,7 @@ module Description : Defs.ClassDescription = struct
   let classname = "Functor"
   let runtimename = "Deriving_Functor"
   let default_module = None
+  let alpha = None
   let allow_private = false
   let predefs = [
     ["list"], "list";
