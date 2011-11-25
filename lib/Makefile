@@ -57,6 +57,7 @@ deriving_num.cmxa: deriving_num.cmx
 clean:
 	-rm -f *.cm[ioax] *.cmxa *.cmxs *${OBJEXT} *${LIBEXT} *.annot
 distclean: clean
+	-rm -f .*.deps
 	-rm -f *~ \#* .\#*
 
 # Dependencies

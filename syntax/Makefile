@@ -132,10 +132,13 @@ id.ml: id.mlp ../Makefile.config ../VERSION
 
 clean:
 	-rm -f *.cm[ioax] *.cmxa *.cmxs *${OBJEXT} *${LIBEXT} *.annot
+	-rm -f classes/*.cm[ioax] classes/*.cmxa classes/*.cmxs \
+               classes/*${OBJEXT} classes/*${LIBEXT} classes/*.annot
 	-rm -f deriving${EXEEXT} deriving.opt${EXEEXT}
 distclean: clean
 	-rm -f .*.deps classes/.*.deps
 	-rm -f *~ \#* .\#*
+	-rm -f classes/*~ classes/\#* classes/.\#*
 	-rm -f id.ml defs.ml
 
 # Dependencies
