@@ -76,16 +76,16 @@ module Generator(Loc: Loc)(Desc : ClassDescription) : sig
     method virtual proxy: unit -> Type.name option * Ast.ident list
     method virtual sum:
 	?eq:Type.expr -> context ->
-	  Type.name -> Type.param list -> Type.constraint_ list ->
+	  Type.name -> Type.expr list -> Type.constraint_ list ->
 	    Type.summand list -> Ast.str_item list
     method virtual tuple: context -> Type.expr list -> Ast.str_item list
     method virtual variant:
 	context ->
-	  Type.name -> Type.param list -> Type.constraint_ list ->
+	  Type.name -> Type.expr list -> Type.constraint_ list ->
 	    Type.variant -> Ast.str_item list
     method virtual record:
 	?eq:Type.expr -> context ->
-	  Type.name -> Type.param list -> Type.constraint_ list ->
+	  Type.name -> Type.expr list -> Type.constraint_ list ->
 	    Type.field list -> Ast.str_item list
 
     method class_: context -> [ `NYI ] -> Ast.str_item list

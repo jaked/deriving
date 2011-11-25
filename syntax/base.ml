@@ -328,8 +328,10 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
       | `Tuple t    -> self#wrap ctxt ty (self#tuple      ctxt t)
 
     method rhs ctxt subst (tname, params, rhs, constraints, _ : Type.decl) =
-      let ty = `Constr([tname], List.map (fun p -> `Param p) params) in
-      let ty = substitute_expr subst ty in
+      let params =
+	List.map (substitute_expr subst) (List.map (fun p -> `Param p) params)
+      in
+      let ty = `Constr([tname], params) in
       let rhs = substitute_rhs subst rhs in
       match rhs with
         | `Fresh (_, _, `Private) when not Desc.allow_private ->
@@ -370,15 +372,15 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
 
     method virtual variant:
 	context ->
-	  Type.name -> Type.param list -> Type.constraint_ list ->
+	  Type.name -> Type.expr list -> Type.constraint_ list ->
 	    variant -> Ast.str_item list
     method virtual sum:
 	?eq:expr -> context ->
-	  Type.name -> Type.param list -> Type.constraint_ list ->
+	  Type.name -> Type.expr list -> Type.constraint_ list ->
 	    summand list -> Ast.str_item list
     method virtual record:
 	?eq:expr -> context ->
-	  Type.name -> Type.param list -> Type.constraint_ list ->
+	  Type.name -> Type.expr list -> Type.constraint_ list ->
 	    field list -> Ast.str_item list
     method virtual tuple: context -> expr list -> Ast.str_item list
 

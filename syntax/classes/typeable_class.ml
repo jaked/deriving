@@ -68,7 +68,7 @@ module Builder(Loc : Defs.Loc) = struct
       let paramList =
 	List.fold_right
           (fun p cdr ->
-            <:expr< $self#call_expr ctxt (`Param p) "type_rep"$ :: $cdr$ >>)
+            <:expr< $self#call_expr ctxt p "type_rep"$ :: $cdr$ >>)
           params
 	  <:expr< [] >> in
       wrap <:expr< $uid:runtimename$.TypeRep.mkFresh $str:mkName tname$ $paramList$ >>
