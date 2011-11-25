@@ -13,17 +13,17 @@ module Description : Defs.ClassDescription = struct
   let alpha = None
   let allow_private = false
   let predefs = [
-    ["unit"], "unit";
-    ["bool"], "bool";
-    ["char"], "char";
-    ["int"], "int";
-    ["int32"], "int32";
-    ["Int32";"t"], "int32";
-    ["int64"], "int64";
-    ["Int64";"t"], "int64";
-    ["nativeint"], "nativeint";
-    ["open_flag"], "open_flag";
-    ["fpclass"], "fpclass";
+    ["unit"], ["Deriving_Bounded";"unit"];
+    ["bool"], ["Deriving_Bounded";"bool"];
+    ["char"], ["Deriving_Bounded";"char"];
+    ["int"], ["Deriving_Bounded";"int"];
+    ["int32"], ["Deriving_Bounded";"int32"];
+    ["Int32";"t"], ["Deriving_Bounded";"int32"];
+    ["int64"], ["Deriving_Bounded";"int64"];
+    ["Int64";"t"], ["Deriving_Bounded";"int64"];
+    ["nativeint"], ["Deriving_Bounded";"nativeint"];
+    ["open_flag"], ["Deriving_Bounded";"open_flag"];
+    ["fpclass"], ["Deriving_Bounded";"fpclass"];
   ]
   let depends = []
 end

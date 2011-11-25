@@ -13,20 +13,20 @@ module Description : Defs.ClassDescription = struct
   let alpha = Some "Dump_alpha"
   let allow_private = false
   let predefs = [
-    ["unit"], "unit";
-    ["bool"], "bool";
-    ["char"], "char";
-    ["int"], "int";
-    ["int32"], "int32";
-    ["Int32";"t"], "int32";
-    ["int64"], "int64";
-    ["Int64";"t"], "int64";
-    ["nativeint"], "nativeint";
-    ["float"], "float";
-    ["num"], "num";
-    ["string"], "string";
-    ["list"], "list";
-    ["option"], "option";
+    ["unit"], ["Deriving_Dump";"unit"];
+    ["bool"], ["Deriving_Dump";"bool"];
+    ["char"], ["Deriving_Dump";"char"];
+    ["int"], ["Deriving_Dump";"int"];
+    ["int32"], ["Deriving_Dump";"int32"];
+    ["Int32";"t"], ["Deriving_Dump";"int32"];
+    ["int64"], ["Deriving_Dump";"int64"];
+    ["Int64";"t"], ["Deriving_Dump";"int64"];
+    ["nativeint"], ["Deriving_Dump";"nativeint"];
+    ["float"], ["Deriving_Dump";"float"];
+    ["num"], ["Deriving_Dump";"num"];
+    ["string"], ["Deriving_Dump";"string"];
+    ["list"], ["Deriving_Dump";"list"];
+    ["option"], ["Deriving_Dump";"option"];
   ]
   let depends = []
 end

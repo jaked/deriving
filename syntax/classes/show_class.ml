@@ -8,27 +8,27 @@ open Utils
 
 module Description : Defs.ClassDescription = struct
   let classname = "Show"
-  let runtimename = "Deriving_Show"
   let default_module = Some "Defaults"
+  let runtimename = "Deriving_Show"
   let alpha = Some "Show_unprintable"
   let allow_private = true
   let predefs = [
-    ["int"      ], "int";
-    ["bool"     ], "bool";
-    ["unit"     ], "unit";
-    ["char"     ], "char";
-    ["int32"    ], "int32";
-    ["Int32";"t"], "int32";
-    ["int64"    ], "int64";
-    ["Int64";"t"], "int64";
-    ["nativeint"], "nativeint";
-    ["float"    ], "float";
-    ["num"], "num";
-    ["string"   ], "string";
-    ["list"     ], "list";
-    ["ref"      ], "ref";
-    ["option"   ], "option";
-    ["array"    ], "array";
+    ["int"      ], ["Deriving_Show";"int"];
+    ["bool"     ], ["Deriving_Show";"bool"];
+    ["unit"     ], ["Deriving_Show";"unit"];
+    ["char"     ], ["Deriving_Show";"char"];
+    ["int32"    ], ["Deriving_Show";"int32"];
+    ["Int32";"t"], ["Deriving_Show";"int32"];
+    ["int64"    ], ["Deriving_Show";"int64"];
+    ["Int64";"t"], ["Deriving_Show";"int64"];
+    ["nativeint"], ["Deriving_Show";"nativeint"];
+    ["float"    ], ["Deriving_Show";"float"];
+    ["num"      ], ["Deriving_num" ;"num"];
+    ["string"   ], ["Deriving_Show";"string"];
+    ["list"     ], ["Deriving_Show";"list"];
+    ["ref"      ], ["Deriving_Show";"ref"];
+    ["option"   ], ["Deriving_Show";"option"];
+    ["array"    ], ["Deriving_Show";"array"];
   ]
   let depends = []
 end

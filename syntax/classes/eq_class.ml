@@ -13,22 +13,22 @@ module Description : Defs.ClassDescription = struct
   let alpha = Some "Eq_alpha"
   let allow_private = true
   let predefs = [
-    ["unit"], "unit";
-    ["bool"], "bool";
-    ["char"], "char";
-    ["int"], "int";
-    ["int32"], "int32";
-    ["Int32";"t"], "int32";
-    ["int64"], "int64";
-    ["Int64";"t"], "int64";
-    ["nativeint"], "nativeint";
-    ["float"], "float";
-    ["num"], "num";
-    ["list"], "list";
-    ["option"], "option";
-    ["string"], "string";
-    ["ref"], "ref";
-    ["array"], "array";
+    ["unit"], ["Deriving_Eq";"unit"];
+    ["bool"], ["Deriving_Eq";"bool"];
+    ["char"], ["Deriving_Eq";"char"];
+    ["int"], ["Deriving_Eq";"int"];
+    ["int32"], ["Deriving_Eq";"int32"];
+    ["Int32";"t"], ["Deriving_Eq";"int32"];
+    ["int64"], ["Deriving_Eq";"int64"];
+    ["Int64";"t"], ["Deriving_Eq";"int64"];
+    ["nativeint"], ["Deriving_Eq";"nativeint"];
+    ["float"], ["Deriving_Eq";"float"];
+    ["num"], ["Deriving_num";"num"];
+    ["list"], ["Deriving_Eq";"list"];
+    ["option"], ["Deriving_Eq";"option"];
+    ["string"], ["Deriving_Eq";"string"];
+    ["ref"], ["Deriving_Eq";"ref"];
+    ["array"], ["Deriving_Eq";"array"];
   ]
   let depends = []
 end

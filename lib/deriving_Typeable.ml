@@ -220,7 +220,6 @@ module Primitive_typeable (T : sig type t val magic : string end) : Typeable wit
            end)
 module Typeable_unit   = Primitive_typeable(struct type t = unit let magic = "Primitive.unit" end)
 module Typeable_int    = Primitive_typeable(struct type t = int let magic = "Primitive.int" end)
-module Typeable_num    = Primitive_typeable(struct type t = Num.num let magic = "Primitive.Num.num" end)
 module Typeable_float  = Primitive_typeable(struct type t = float let magic = "Primitive.float" end)
 module Typeable_bool   = Primitive_typeable(struct type t = bool let magic = "Primitive.bool" end)
 module Typeable_string = Primitive_typeable(struct type t = string let magic = "Primitive.string" end)

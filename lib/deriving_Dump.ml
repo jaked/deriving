@@ -226,17 +226,6 @@ module Dump_alpha(P: sig type a end) = Defaults(struct
   let from_stream _ = assert false
 end)
 
-module Dump_num = Defaults (
-  struct
-    (* TODO: a less wasteful dumper for nums.  A good start would be
-       using half a byte per decimal-coded digit, instead of a whole
-       byte. *)
-    type a = Num.num
-    let to_buffer buffer n = Dump_string.to_buffer buffer (Num.string_of_num n)
-    and from_stream stream = Num.num_of_string (Dump_string.from_stream stream)
-  end
-)
-
 module Dump_undumpable (P : sig type a val tname : string end) = Defaults ( 
   struct 
     type a = P.a

@@ -13,9 +13,9 @@ module Description : Defs.ClassDescription = struct
   let alpha = None
   let allow_private = false
   let predefs = [
-    ["list"], "list";
-    ["ref"], "ref";
-    ["option"], "option";
+    ["list"], ["Deriving_Functor";"list"];
+    ["ref"], ["Deriving_Functor";"ref"];
+    ["option"], ["Deriving_Functor";"option"];
   ]
   let depends = []
 end
@@ -114,7 +114,7 @@ module Builder(Loc : Defs.Loc) = struct
         <:expr< fun f x -> f ($expr context f$ x) >>
     | `Constr (qname, ts) ->
 	let qname =
-	  try [runtimename ; List.assoc qname predefs]
+	  try List.assoc qname predefs
 	  with Not_found -> qname in
         List.fold_left
           (fun fn arg -> <:expr< $fn$ $expr context arg$ >>)

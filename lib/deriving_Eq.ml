@@ -64,9 +64,3 @@ struct
     | _ -> false
 end
 
-module Eq_num
-  : Eq with type a = Num.num =
-struct
-  type a = Num.num
-  let eq = Num.eq_num
-end

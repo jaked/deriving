@@ -165,11 +165,6 @@ module Show_int = Defaults (struct
   let format formatter item = Format.pp_print_string formatter (string_of_int item)
 end)
 
-module Show_num = Defaults (struct
-  type a = Num.num
-  let format formatter item = Format.pp_print_string formatter (Num.string_of_num item)
-end)
-
 module Show_float = Defaults(struct
     type a = float
     let format formatter item = Format.pp_print_string formatter (string_of_float item)

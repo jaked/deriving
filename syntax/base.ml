@@ -382,7 +382,7 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
       | _ ->
 	(* External module: apply classical functor. *)
         let qname =
-	  try [Desc.runtimename ; List.assoc qname Desc.predefs]
+	  try List.assoc qname Desc.predefs
 	  with Not_found -> qname in
 	List.fold_left
 	  (fun m p -> <:module_expr< $m$ ($self#expr ctxt p$) >>)

@@ -25,7 +25,6 @@ module Dump_int       : Dump with type a = int
 module Dump_char      : Dump with type a = char
 module Dump_string    : Dump with type a = string
 module Dump_float     : Dump with type a = float
-module Dump_num       : Dump with type a = Num.num
 module Dump_bool      : Dump with type a = bool
 module Dump_unit      : Dump with type a = unit
 module Dump_list   (P : Dump) : Dump with type a = P.a list

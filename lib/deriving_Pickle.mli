@@ -63,7 +63,6 @@ module Pickle_bool  : Pickle with type a = bool
 module Pickle_int   : Pickle with type a = int
 module Pickle_char  : Pickle with type a = char
 module Pickle_float : Pickle with type a = float
-module Pickle_num   : Pickle with type a = Num.num
 module Pickle_string : Pickle with type a = string
 module Pickle_int32 : Pickle with type a = int32
 module Pickle_int64 : Pickle with type a = int64

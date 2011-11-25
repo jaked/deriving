@@ -13,10 +13,10 @@ module Description : Defs.ClassDescription = struct
   let alpha = None
   let allow_private = false
   let predefs = [
-    ["int"], "int";
-    ["bool"], "bool";
-    ["unit"], "unit";
-    ["char"], "char";
+    ["int"], ["Deriving_Enum";"int"];
+    ["bool"], ["Deriving_Enum";"bool"];
+    ["unit"], ["Deriving_Enum";"unit"];
+    ["char"], ["Deriving_Enum";"char"];
   ]
   let depends = []
 end

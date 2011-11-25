@@ -13,21 +13,21 @@ module Description : Defs.ClassDescription = struct
   let alpha = None
   let allow_private = false
   let predefs = [
-    ["int"], "int";
-    ["bool"], "bool";
-    ["unit"], "unit";
-    ["char"], "char";
-    ["int32"], "int32";
-    ["Int32";"t"], "int32";
-    ["int64"], "int64";
-    ["Int64";"t"], "int64";
-    ["nativeint"], "nativeint";
-    ["float"], "float";
-    ["num"], "num";
-    ["string"], "string";
-    ["list"], "list";
-    ["ref"], "ref";
-    ["option"], "option";
+    ["int"], ["Deriving_Pickle";"int"];
+    ["bool"], ["Deriving_Pickle";"bool"];
+    ["unit"], ["Deriving_Pickle";"unit"];
+    ["char"], ["Deriving_Pickle";"char"];
+    ["int32"], ["Deriving_Pickle";"int32"];
+    ["Int32";"t"], ["Deriving_Pickle";"int32"];
+    ["int64"], ["Deriving_Pickle";"int64"];
+    ["Int64";"t"], ["Deriving_Pickle";"int64"];
+    ["nativeint"], ["Deriving_Pickle";"nativeint"];
+    ["float"], ["Deriving_Pickle";"float"];
+    ["num"], ["Deriving_num";"num"];
+    ["string"], ["Deriving_Pickle";"string"];
+    ["list"], ["Deriving_Pickle";"list"];
+    ["ref"], ["Deriving_Pickle";"ref"];
+    ["option"], ["Deriving_Pickle";"option"];
   ]
   let depends = [Typeable_class.depends; Eq_class.depends]
 end

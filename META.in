@@ -1,9 +1,15 @@
 version = "dev"
 description = "Deriving (patched for the Ocsigen project)"
 
-requires        = "num"
-archive(byte)   = "deriving.cma"
-archive(native) = "deriving.cmxa"
+
+requires        = "deriving.base,num"
+archive(byte)   = "deriving_num.cma"
+archive(native) = "deriving_num.cmxa"
+
+package "base" (
+  archive(byte)   = "deriving.cma"
+  archive(native) = "deriving.cmxa"
+)
 
 package "syntax" (
   exists_if = "pa_deriving.cma"

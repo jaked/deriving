@@ -23,10 +23,10 @@ SOURCES = deriving_Show.ml           \
 
 all: byte opt
 
-byte: deriving.cma
-opt:: deriving.cmxa
+byte: deriving.cma deriving_num.cma
+opt:: deriving.cmxa deriving_num.cmxa
 ifeq "${NATDYNLINK}" "YES"
-opt:: deriving.cmxs
+opt:: deriving.cmxs deriving_num.cmxs
 endif
 
 ##
@@ -34,6 +34,12 @@ endif
 deriving.cma: ${SOURCES:.ml=.cmo}
 	${OCAMLC} -a -o $@ $^
 deriving.cmxa: ${SOURCES:.ml=.cmx}
+	${OCAMLOPT} -a -o $@ $^
+
+
+deriving_num.cma: deriving_num.cmo
+	${OCAMLC} -a -o $@ $^
+deriving_num.cmxa: deriving_num.cmx
 	${OCAMLOPT} -a -o $@ $^
 
 # Common rules
@@ -54,7 +60,17 @@ distclean: clean
 	-rm -f *~ \#* .\#*
 
 # Dependencies
-depend:
-	${OCAMLDEP} ${PP} *.ml *.mli > .depend
 
--include .depend
+DEPS := $(patsubst %.ml,.%.ml.deps,$(wildcard *.ml)) \
+        $(patsubst %.mli,.%.mli.deps,$(wildcard *.mli))
+
+.depend: ${DEPS}
+	cat .*.deps > .depend
+
+.SECONDARY: ${DEPS}
+.%.ml.deps: %.ml
+	${OCAMLDEP} ${PP} $^ > $@
+.%.mli.deps: %.mli
+	${OCAMLDEP} ${PP} $^ > $@
+
+include .depend

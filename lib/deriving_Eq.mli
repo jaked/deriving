@@ -13,7 +13,6 @@ module Eq_mutable (S : sig type a end) : Eq with type a = S.a
 
 module Eq_alpha(S : sig type a end) : Eq with type a = S.a
 module Eq_int            : Eq with type a = int
-module Eq_num            : Eq with type a = Num.num
 module Eq_bool           : Eq with type a = bool
 module Eq_float          : Eq with type a = float
 module Eq_unit           : Eq with type a = unit

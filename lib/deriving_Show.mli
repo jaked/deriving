@@ -22,7 +22,6 @@ module Show_int       : Show with type a = int
 module Show_int32     : Show with type a = int32
 module Show_int64     : Show with type a = int64
 module Show_nativeint : Show with type a = nativeint
-module Show_num       : Show with type a = Num.num
 module Show_float     : Show with type a = float
 module Show_string    : Show with type a = string
 

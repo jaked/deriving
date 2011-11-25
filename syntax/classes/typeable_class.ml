@@ -13,21 +13,21 @@ module Description : Defs.ClassDescription = struct
   let alpha = None
   let allow_private = true
   let predefs = [
-    ["int"], "int";
-    ["bool"], "bool";
-    ["unit"], "unit";
-    ["char"], "char";
-    ["int32"], "int32";
-    ["Int32";"t"], "int32";
-    ["int64"], "int64";
-    ["Int64";"t"], "int64";
-    ["nativeint"], "nativeint";
-    ["float"], "float";
-    ["num"], "num";
-    ["string"], "string";
-    ["list"], "list";
-    ["ref"], "ref";
-    ["option"], "option";
+    ["int"], ["Deriving_Typeable";"int"];
+    ["bool"], ["Deriving_Typeable";"bool"];
+    ["unit"], ["Deriving_Typeable";"unit"];
+    ["char"], ["Deriving_Typeable";"char"];
+    ["int32"], ["Deriving_Typeable";"int32"];
+    ["Int32";"t"], ["Deriving_Typeable";"int32"];
+    ["int64"], ["Deriving_Typeable";"int64"];
+    ["Int64";"t"], ["Deriving_Typeable";"int64"];
+    ["nativeint"], ["Deriving_Typeable";"nativeint"];
+    ["float"], ["Deriving_Typeable";"float"];
+    ["num"], ["Deriving_num";"num"];
+    ["string"], ["Deriving_Typeable";"string"];
+    ["list"], ["Deriving_Typeable";"list"];
+    ["ref"], ["Deriving_Typeable";"ref"];
+    ["option"], ["Deriving_Typeable";"option"];
   ]
   let depends = []
 end
