@@ -1,12 +1,14 @@
-== dev-ocsigen
+== 0.3-ocsigen
 
   * Use "lazy first-order module" instead of "recursive module" to be
     compatible with {{{js_of_ocaml}}}.
   * Be less restrictive with mutually recursive type definition
+  * Split runtime into deriving.cma and deriving_num.cma
 
   * Class:
   ** Typeable: use OCaml's lazy for {{{type_rep}}}
   ** Show: added separators to {{{map}}} and {{{set}}}
+  ** Show, Dump and Eq: Allow polymorphic type fields.
 
 == 0.2-ocsigen
 
