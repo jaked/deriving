@@ -155,14 +155,6 @@ module type Untranslate = sig
   val param : string * [< `Minus | `Plus ] option -> Ast.ctyp
   val qname : string list -> Ast.ident
   val qName : string list -> Ast.ident
-  val unlist :
-    ('a -> Ast.ctyp -> Ast.ctyp) ->
-    'b list -> ('b -> 'a) -> Ast.ctyp
-  val pair : Ast.ctyp -> Ast.ctyp -> Ast.ctyp
-  val bar : Ast.ctyp -> Ast.ctyp -> Ast.ctyp
-  val semi : Ast.ctyp -> Ast.ctyp -> Ast.ctyp
-  val comma : Ast.ctyp -> Ast.ctyp -> Ast.ctyp
-  val and_ : Ast.ctyp -> Ast.ctyp -> Ast.ctyp
   val expr : expr -> Ast.ctyp
   val poly : param list * expr -> Ast.ctyp
   val rhs : rhs -> Ast.ctyp
@@ -177,3 +169,7 @@ module type Untranslate = sig
 end
 
 module Untranslate(C : sig val _loc : Ast.Loc.t end) : Untranslate
+
+(* Debug *)
+val print_expr : expr -> string
+val print_rhs : rhs -> string

@@ -404,12 +404,6 @@ module type Untranslate = sig
   val param: string * [< `Minus | `Plus ] option -> Ast.ctyp
   val qname: string list -> Ast.ident
   val qName: string list -> Ast.ident
-  val unlist: ('a -> Ast.ctyp -> Ast.ctyp) -> 'b list -> ('b -> 'a) -> Ast.ctyp
-  val pair: Ast.ctyp -> Ast.ctyp -> Ast.ctyp
-  val bar:  Ast.ctyp -> Ast.ctyp -> Ast.ctyp
-  val semi: Ast.ctyp -> Ast.ctyp -> Ast.ctyp
-  val comma: Ast.ctyp -> Ast.ctyp -> Ast.ctyp
-  val and_: Ast.ctyp -> Ast.ctyp -> Ast.ctyp
   val expr: expr -> Ast.ctyp
   val poly: param list * expr -> Ast.ctyp
   val rhs: rhs -> Ast.ctyp
@@ -442,21 +436,12 @@ struct
     | [x] -> <:ident< $uid:x$ >>
     | x::xs -> <:ident< $uid:x$.$qName xs$ >>
 
-  let unlist join items translate =
-    List.fold_right join (List.map translate items) (Ast.TyNil _loc)
-
-  let pair l r = Ast.TySta (_loc, l,r)
-  let bar l r = <:ctyp< $l$ | $r$ >>
-  let semi l r = <:ctyp< $l$ ; $r$ >>
-  let comma l r = <:ctyp< $l$ , $r$ >>
-  let and_ l r = <:ctyp< $l$ and $r$ >>
-
   let expr =
     let rec expr : expr -> Ast.ctyp = function
         `Param p -> param p
       | `Function (f, t) -> <:ctyp< $expr f$ -> $expr t$ >>
       | `Tuple [t] -> expr t
-      | `Tuple ts -> Ast.TyTup (_loc, unlist pair ts expr)
+      | `Tuple ts -> Ast.TyTup (_loc, Ast.tySta_of_list (List.map expr ts))
       | `Constr (tcon, args) -> app (Ast.TyId (_loc, qname tcon)) args
       | _ -> assert false
     and app f = function
@@ -478,23 +463,23 @@ struct
       | `Fresh (Some e, t, `Private) -> <:ctyp< $expr e$ == private $repr t$ >>
       | `Fresh (Some e, t, `Public) -> Ast.TyMan (_loc, expr e, repr t)
       | `Expr t          -> expr t
-      | `Variant (`Eq, tags) -> <:ctyp< [= $unlist bar tags tagspec$ ] >>
-      | `Variant (`Gt, tags) -> <:ctyp< [> $unlist bar tags tagspec$ ] >>
-      | `Variant (`Lt, tags) -> <:ctyp< [< $unlist bar tags tagspec$ ] >>
+      | `Variant (`Eq, tags) -> <:ctyp< [= $Ast.tyOr_of_list (List.map tagspec tags)$ ] >>
+      | `Variant (`Gt, tags) -> <:ctyp< [> $Ast.tyOr_of_list (List.map tagspec tags)$ ] >>
+      | `Variant (`Lt, tags) -> <:ctyp< [< $Ast.tyOr_of_list (List.map tagspec tags)$ ] >>
       | `Nothing -> <:ctyp< >>
   and tagspec = function
       | Tag (c, []) -> <:ctyp< `$c$ >>
       | Tag (c, ts) -> <:ctyp< `$c$ of $expr (`Tuple ts)$ >>
       | Extends t -> <:ctyp< $expr t$ >>
   and summand (name, (args : expr list)) =
-      let args = unlist and_ args expr in
+      let args = Ast.tyAnd_of_list (List.map expr args) in
         <:ctyp< $uid:name$ of $args$ >>
   and field ((name, t, mut) : field) = match mut with
       | `Mutable   -> <:ctyp< $lid:name$ : mutable $poly t$ >> (* mutable l : t doesn't work; perhaps a camlp4 bug *)
       | `Immutable -> <:ctyp< $lid:name$ : $poly t$ >>
   and repr = function
-      | Sum summands  -> Ast.TySum (_loc, unlist bar summands summand)
-      | Record fields -> <:ctyp< { $unlist semi fields field$ }>>
+      | Sum summands  -> Ast.TySum (_loc,Ast.tyOr_of_list (List.map summand summands))
+      | Record fields -> <:ctyp< { $list:List.map field fields $ }>>
 
   let constraint_ (e1,e2) = (expr e1, expr e2)
 
@@ -542,4 +527,21 @@ let substitute_rhs map =
   (substitute map)#rhs
 let substitute_constraint map =
   (substitute map)#constraint_
+
+
+
+(** Pretty-print for error-message *)
+open Camlp4.PreCast
+
+module Printer = Camlp4.Printers.OCaml.Make(Syntax)
+module Unt = Untranslate(struct let _loc = Loc.ghost end)
+let print_expr ty =
+  ignore(Format.flush_str_formatter ());
+  Printer.print None (fun p fmt -> p#ctyp Format.str_formatter) (Unt.expr ty);
+  Format.flush_str_formatter ()
+
+let print_rhs ty =
+  ignore(Format.flush_str_formatter ());
+  Printer.print None (fun p fmt -> p#ctyp Format.str_formatter) (Unt.rhs ty);
+  Format.flush_str_formatter ()
 
