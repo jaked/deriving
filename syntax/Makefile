@@ -163,4 +163,6 @@ classes/.%.mli.deps: classes/%.mli
 defs.ml: defs.mli
 	ln -s defs.mli defs.ml
 
+ifneq (${DEPEND},no)
 include .depend
+endif

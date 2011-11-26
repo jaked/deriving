@@ -16,15 +16,15 @@ META: META.in
 	sed s/%%NAME%%/${PROJECTNAME}/ META.in > META
 
 clean: clean.local
-	${MAKE} -C syntax clean
-	${MAKE} -C lib clean
+	${MAKE} -C syntax clean DEPEND=no
+	${MAKE} -C lib clean DEPEND=no
 	${MAKE} -C tests clean
 clean.local:
 	-rm -f META
 
 distclean: clean.local
-	${MAKE} -C syntax distclean
-	${MAKE} -C lib distclean
+	${MAKE} -C syntax distclean DEPEND=no
+	${MAKE} -C lib distclean DEPEND=no
 	${MAKE} -C tests distclean
 	-rm -f *~ \#* .\#*
 

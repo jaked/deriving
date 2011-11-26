@@ -74,4 +74,6 @@ DEPS := $(patsubst %.ml,.%.ml.deps,$(wildcard *.ml)) \
 .%.mli.deps: %.mli
 	${OCAMLDEP} ${PP} $^ > $@
 
+ifneq (${DEPEND},no)
 include .depend
+endif
