@@ -2,7 +2,7 @@ version = "dev"
 description = "Deriving (patched for the Ocsigen project)"
 
 
-requires        = "deriving.base,num"
+requires        = "%%NAME%%.base,num"
 archive(byte)   = "deriving_num.cma"
 archive(native) = "deriving_num.cmxa"
 
