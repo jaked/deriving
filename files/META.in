@@ -1,8 +1,8 @@
 version = "dev"
 description = "Deriving (patched for the Ocsigen project)"
+__LIBDIR__
 
-
-requires        = "%%NAME%%.base,num"
+requires        = "__NAME__.base,num"
 archive(byte)   = "deriving_num.cma"
 archive(native) = "deriving_num.cmxa"
 
@@ -12,9 +12,10 @@ package "base" (
 )
 
 package "syntax" (
+  __SYNTAXDIR__
   exists_if = "pa_deriving.cma"
   requires(syntax) = "camlp4,unix"
-  requires(syntax, toploop) += "%%NAME%%"
+  requires(syntax, toploop) += "__NAME__"
   archive(syntax, preprocessor) = "pa_deriving.cma"
   archive(syntax, toploop) = "pa_deriving.cma"
   package "base" (
@@ -28,9 +29,10 @@ package "syntax" (
 ## However the 'dash' in an predicat name is invalid... (GH 2011/03).
 
 package "syntax_tc" (
+  __SYNTAXDIR__
   exists_if = "pa_deriving_tc.cma"
   requires(syntax) = "camlp4,unix,type-conv"
-  requires(syntax, toploop) += "%%NAME%%"
+  requires(syntax, toploop) += "__NAME__"
   archive(syntax, preprocessor) = "pa_deriving_tc.cma"
   archive(syntax, toploop) = "pa_deriving_tc.cma"
   package "base" (

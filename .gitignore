@@ -10,7 +10,8 @@
 *~
 #*#
 tests/tests
-META
+files/META
+files/META.deriving-ocsigen
 syntax/deriving
 syntax/deriving.opt
 syntax/id.ml
