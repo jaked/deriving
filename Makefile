@@ -16,12 +16,14 @@ files/META: files/META.in
 	sed -e "s%__NAME__%${PROJECTNAME}%" \
             -e "s%__LIBDIR__%%" \
             -e "s%__SYNTAXDIR__%%" \
+            -e "s%__TCNAME__%${TYPECONVNAME}%" \
 	  $< > $@
 
 files/META.${PROJECTNAME}: files/META.in
 	sed -e "s%__NAME__%${PROJECTNAME}%" \
             -e "s%__LIBDIR__%directory = \"../lib\"%" \
             -e "s%__SYNTAXDIR__%directory = \"../syntax\"%" \
+            -e "s%__TCNAME__%${TYPECONVNAME}%" \
 	  $< > $@
 
 clean: clean.local

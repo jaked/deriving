@@ -2,18 +2,17 @@ version = "dev"
 description = "Deriving (patched for the Ocsigen project)"
 __LIBDIR__
 
-requires        = "__NAME__.base,num"
-archive(byte)   = "deriving_num.cma"
-archive(native) = "deriving_num.cmxa"
+archive(byte)   = "deriving.cma"
+archive(native) = "deriving.cmxa"
 
-package "base" (
-  archive(byte)   = "deriving.cma"
-  archive(native) = "deriving.cmxa"
-)
+archive(byte,pkg_num)   = "deriving_num.cma"
+archive(native,pkg_num) = "deriving_num.cmxa"
 
 package "syntax" (
   __SYNTAXDIR__
   exists_if = "pa_deriving.cma"
+  description = "Deriving syntax extension"
+  version = "[distributed with __NAME__]"
   requires(syntax) = "camlp4,unix"
   requires(syntax, toploop) += "__NAME__"
   archive(syntax, preprocessor) = "pa_deriving.cma"
@@ -25,19 +24,25 @@ package "syntax" (
   )
 )
 
-## Presence of type-conv shoud be detected with the predicate "pkg_type-conv"
-## However the 'dash' in an predicat name is invalid... (GH 2011/03).
-
 package "syntax_tc" (
   __SYNTAXDIR__
+  version = "[distributed with __NAME__]"
   exists_if = "pa_deriving_tc.cma"
-  requires(syntax) = "camlp4,unix,type-conv"
+  requires(syntax) = "camlp4,unix,__TCNAME__"
   requires(syntax, toploop) += "__NAME__"
   archive(syntax, preprocessor) = "pa_deriving_tc.cma"
   archive(syntax, toploop) = "pa_deriving_tc.cma"
   package "base" (
+    version = "[distributed with __NAME__]"
     requires(syntax) = "camlp4"
     archive(syntax, preprocessor) = "pa_deriving_common.cmo pa_deriving_tc.cmo"
     archive(syntax, toploop) = "pa_deriving_common.cmo pa_deriving_tc.cmo"
   )
+)
+
+## Deprecated
+package "base" (
+  description = "(deprecated)"
+  version = "[distributed with __NAME__]"
+  requires = "__NAME__"
 )

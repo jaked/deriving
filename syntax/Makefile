@@ -23,7 +23,7 @@ extend.cmo extend.cmx .extend.ml.deps: \
 pa_deriving.cmo pa_deriving.cmx .pa_deriving.ml.deps: \
 	LIBS+=-syntax camlp4o -package camlp4.extend,camlp4.quotations.o
 pa_deriving_tc.cmo pa_deriving_tc.cmx .pa_deriving_tc.ml.deps: \
-	LIBS+=-syntax camlp4o -package camlp4.extend,camlp4.quotations.o,type-conv
+	LIBS+=-syntax camlp4o -package camlp4.extend,camlp4.quotations.o,${TYPECONVNAME}
 
 CLASSES := show_class.ml         \
            dump_class.ml         \
