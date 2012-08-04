@@ -111,7 +111,7 @@ sig
   type t = int 
       deriving (Eq, Enum, Bounded, Dump, Show, Typeable, Pickle, Functor)
 end
-  = Defs
+  = Tests_defs
 
 (* Deriving a signature with types made abstract *)
 module T_opaque :
@@ -158,7 +158,7 @@ sig
   module Private : sig type p2 end
   type t deriving (Eq, Enum, Bounded, Dump, Show, Typeable, Pickle, Functor)
 end
-  = Defs
+  = Tests_defs
 
 
 (* A signature with no deriving (to make sure that the types are still
@@ -251,4 +251,4 @@ sig
     
   type t = int 
 end
-  = Defs
+  = Tests_defs

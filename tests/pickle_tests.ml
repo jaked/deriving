@@ -1,4 +1,4 @@
-open Defs
+open Tests_defs
 open Deriving_Eq
 open Deriving_Pickle
 

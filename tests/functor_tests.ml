@@ -1,4 +1,4 @@
-open Defs
+open Tests_defs
 
 let r1 =
   begin

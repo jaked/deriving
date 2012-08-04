@@ -1,14 +1,18 @@
 include ../Makefile.config
 
+OCAMLPATH := ../files:${OCAMLPATH}
+export OCAMLPATH
+
 OCAMLC     := ${OCAMLFIND} ocamlc
 OCAMLOPT   := ${OCAMLFIND} ocamlopt
 OCAMLDEP   := ${OCAMLFIND} ocamldep
-PP         := -package camlp4 -ppopt ../syntax/pa_deriving.cma -syntax camlp4o
+PP         := -package ${PROJECTNAME},${PROJECTNAME}.syntax -syntax camlp4o
+PPTC       := -package ${PROJECTNAME},${PROJECTNAME}.syntax_tc -syntax camlp4o
 LIBS       := -I ../lib -package num
 
 OCAMLFLAGS   = -w Aef
 
-SOURCES = defs.ml               \
+SOURCES = tests_defs.ml         \
           bimap.ml	        \
           sigs.ml               \
           pickle_tests.ml       \
@@ -21,6 +25,7 @@ SOURCES = defs.ml               \
 	  show_tests.ml         \
           exp.ml                \
           inline.ml             \
+	  tc.ml                 \
 
 ##
 
@@ -35,6 +40,11 @@ tests${EXEEXT}: ${SOURCES:.ml=.cmo}
 	${OCAMLC} ${OCAMLFLAGS} ${PP} ${LIBS} -c $<
 %.cmx: %.ml
 	${OCAMLOPT} ${OCAMLFLAGS} ${PP} ${LIBS} -c $<
+
+tc.cmo: tc.ml
+	${OCAMLC} ${OCAMLFLAGS} ${PPTC} ${LIBS} -c $<
+tc.cmx: tc.ml
+	${OCAMLOPT} ${OCAMLFLAGS} ${PPTC} ${LIBS} -c $<
 
 # Clean up
 clean:
