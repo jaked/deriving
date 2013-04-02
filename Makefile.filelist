@@ -33,6 +33,8 @@ endif
 
 ifneq (${TYPECONV},)
 
+INTF += syntax/pa_deriving_tc.cmi
+
 IMPL += syntax/pa_deriving_tc.cma \
 
 NATIMPL += syntax/pa_deriving_tc.cmxa \
@@ -44,6 +46,6 @@ endif
 
 endif
 
-NOMLI := syntax/pa_deriving_common.mli
+NOMLI := syntax/pa_deriving_common.mli syntax/pa_deriving_tc.mli
 
 DOC := ${filter-out ${NOMLI}, ${INTF:.cmi=.mli}}
