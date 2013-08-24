@@ -22,8 +22,8 @@ let extract_recursive_calls decls : ESet.t list =
 
 (** The function [close_decls decls] computes, for the set of type
     declarations [decls], the actual instances of these types that are
-    used in the RHS of their definitions.  It throws an exception if
-    the set is known to be infinite (a.k.a. non-regural types). *)
+    used in their definitions.  It throws an exception if the set is
+    known to be infinite (a.k.a. non-regural types). *)
 let close_decls (decls: Type.decl list) : (Type.decl * ESet.t) list =
 
   let check_regular_instance name (name', args') =
@@ -86,6 +86,10 @@ let aggregate_clusters decls =
       (fun (name, args) acc ->
 	ParamSet.union (Type.free_tvars (`Constr ([name], args))) acc)
       insts ParamSet.empty in
+    ParamSet.iter (* TODO error message instead of assert (unknown variable) *)
+      (fun (n, _ as var) -> if not (List.exists (fun p -> var = p) params) then
+          failwith ("Unkown variable " ^ n)
+      ) freevars;
     assert (ParamSet.for_all (* TODO error message instead of assert (unknown variable) *)
 	      (fun var -> List.exists (fun p -> var = p) params) freevars);
   (* Then regroups with instances that shares effective parameters. *)

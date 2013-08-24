@@ -22,18 +22,6 @@ let display_errors loc f p =
   with
     Underivable msg | Failure msg -> fatal_error loc msg
 
-(** ... *)
-
-let contains_tvars, contains_tvars_decl =
-  let o = object
-     inherit [bool] fold as default
-     method crush = List.exists F.id
-     method expr = function
-       | `Param _ -> true
-       | e -> default#expr e
-  end in (o#expr, o#decl)
-
-
 (** *)
 
 let instantiate, instantiate_repr =
@@ -41,6 +29,8 @@ let instantiate, instantiate_repr =
     inherit transform as super
     method expr = function
     | `Param (name, _) -> lookup name
+    | `GParam ((name, _), e) ->
+         if not (contains_tvars e) then e else lookup name
     | e                -> super # expr e
   end in
   (fun (lookup : name -> expr) -> (o lookup)#expr),
@@ -250,6 +240,18 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
   let cast_pattern ctxt ?param ty =
     Helpers.cast_pattern ctxt.argmap ?param ty
   let instantiate_modargs_repr ctxt = instantiate_modargs_repr ctxt.argmap
+  let instantiate_gparam e =
+    let map = object (self)
+      inherit Type.transform as super
+      method expr e = match e with
+      | `GParam (p, e) ->
+          if Type.contains_tvars e then
+            `Param p
+          else
+            e
+      | e -> super#expr e
+    end in
+    map#expr e
 
   let import_depend ctxt ty depend =
     let module Dep = (val depend : FullClassBuilder)(Loc) in
@@ -345,6 +347,7 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
     method expr ctxt (ty: Type.expr) =
       match ty with
       | `Param p    ->                   (self#param      ctxt p)
+      | `GParam p   ->                   (self#gparam     ctxt p)
       | `Object o   -> self#wrap ctxt ty (self#object_    ctxt o)
       | `Class c    -> self#wrap ctxt ty (self#class_     ctxt c)
       | `Label l    -> self#wrap ctxt ty (self#label      ctxt l)
@@ -353,9 +356,11 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
       | `Tuple t    -> self#wrap ctxt ty (self#tuple      ctxt t)
 
     method rhs ctxt subst (tname, params, rhs, constraints, _ : Type.decl) =
+
       let params =
 	List.map (substitute_expr subst) (List.map (fun p -> `Param p) params)
       in
+
       let ty = `Constr([tname], params) in
       let rhs = substitute_rhs subst rhs in
       match rhs with
@@ -364,6 +369,8 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
 				^ " cannot be derived for private types"))
         | `Fresh (eq, Sum summands, _) ->
 	    self#wrap ctxt ty (self#sum ?eq ctxt tname params constraints summands)
+        | `Fresh (eq, GSum (tname', summands), _) ->
+	    self#wrap ctxt ty (self#gsum ?eq ctxt tname params constraints summands)
         | `Fresh (eq, Record fields, _) ->
 	    self#wrap ctxt ty (self#record ?eq ctxt tname params constraints fields)
         | `Expr e -> self#expr ctxt e
@@ -373,6 +380,9 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
 
     method param ctxt (name, _) =
       <:module_expr< $id:Untranslate.qName (NameMap.find name ctxt.argmap)$ >>
+
+    method gparam ctxt (p, e) =
+      if Type.contains_tvars e then self#param ctxt p else self#expr ctxt e
 
     method constr ctxt (qname, params) =
       match qname with
@@ -409,6 +419,8 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
 	    field list -> Ast.str_item list
     method virtual tuple: context -> expr list -> Ast.str_item list
 
+    method gsum ?eq ctxt tname params constraints gsummands =
+      raise (Underivable (Desc.classname ^ " cannot be derived for GADT"))
     method object_   _ o =
       raise (Underivable (Desc.classname ^ " cannot be derived for object types"))
     method class_    _ c =

@@ -16,7 +16,7 @@ let instantiate _loc t classname =
     let module U = Type.Untranslate(struct let _loc = _loc end) in
     let binding = Ast.TyDcl (_loc, "inline", [], t, []) in
     let decls = Base.display_errors _loc Type.Translate.decls binding in
-    if List.exists Base.contains_tvars_decl decls then
+    if List.exists Type.contains_tvars_decl decls then
       Base.fatal_error _loc ("deriving: type variables cannot be used in `method' instantiations");
     let tdecls = List.map U.decl decls in
     let m = Base.derive_str _loc decls class_ in

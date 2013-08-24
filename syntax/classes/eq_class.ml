@@ -49,7 +49,7 @@ module Builder(Loc : Defs.Loc) = struct
 
   let generator = (object (self)
 
-    method proxy unit =
+    method proxy () =
       None, [ <:ident< eq >>; ]
 
     inherit Generator.generator

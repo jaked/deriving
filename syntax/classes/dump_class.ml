@@ -48,7 +48,7 @@ module Builder(Loc : Defs.Loc) = struct
 
     inherit Generator.generator
 
-    method proxy unit =
+    method proxy () =
       None, [ <:ident< to_buffer >>;
 	      <:ident< to_string >>;
 	      <:ident< to_channel >>;

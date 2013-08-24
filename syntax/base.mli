@@ -12,9 +12,6 @@ open Camlp4.PreCast
 val fatal_error : Loc.t -> string -> 'a
 val display_errors : Loc.t -> ('a -> 'b) -> 'a -> 'b
 
-val contains_tvars : Type.expr -> bool
-val contains_tvars_decl : Type.decl -> bool
-
 open Defs
 
 module AstHelpers(L : Loc) : sig
