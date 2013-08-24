@@ -1,3 +1,7 @@
+== 0.4-ocsigen
+
+  * Compatibility with typeconv >= 108.07.00
+
 == 0.3-ocsigen
 
   * Use "lazy first-order module" instead of "recursive module" to be
