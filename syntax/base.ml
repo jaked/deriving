@@ -680,10 +680,13 @@ let find classname =
   with Not_found -> raise (NoSuchClass classname)
 let is_registered classname = Hashtbl.mem generators classname
 
-module MakeInnerDesc(Desc : Defs.ClassDescription) : InnerClassDescription =
+module MakeInnerDesc(Desc : Defs.ClassDescription) =
 struct
   include Desc
-  let find_predefined qname = List.assoc qname Desc.predefs
+  let predefs_tbl : (Type.qname, Type.qname) Hashtbl.t = Hashtbl.create 17
+  let find_predefined qname = Hashtbl.find predefs_tbl qname
+  let register_predefined ty instance = Hashtbl.add predefs_tbl ty instance
+  let () = List.iter (fun (a, b) -> register_predefined a b) predefs
 end
 
 module Register
@@ -694,6 +697,8 @@ module Register
   module Builder(Loc: Loc) = MakeClass(Generator(Loc)(InnerDesc))
 
   let _ = register (module Desc) (module Builder : InnerClassBuilder)
+
+  let register_predefs = InnerDesc.register_predefined
 
 end
 
@@ -707,5 +712,6 @@ module RegisterFull
   let _ = register (module Desc) (module Builder : InnerClassBuilder)
 
   let depends = (module Builder : DepClassBuilder)
+  let register_predefs = InnerDesc.register_predefined
 
 end

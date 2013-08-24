@@ -18,11 +18,12 @@ val derive_str : Loc.t -> Type.decl list -> generator -> Ast.str_item
 val derive_sig : Loc.t -> Type.decl list -> generator -> Ast.sig_item
 
 module Register(Desc : ClassDescription)(MakeClass : ClassBuilder) : sig
-  (* Side-effect only *)
+  val register_predefs : Type.qname -> Type.qname -> unit
 end
 
 module RegisterFull(Desc : ClassDescription)(MakeClass : FullClassBuilder) : sig
   val depends : (module DepClassBuilder)
+  val register_predefs : Type.qname -> Type.qname -> unit
 end
 
 val is_registered : Type.name -> bool
