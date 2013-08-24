@@ -20,13 +20,13 @@ module Description : Defs.ClassDescription = struct
   let depends = []
 end
 
-module Builder(Loc : Defs.Loc) = struct
+module Builder(Generator : Defs.Generator) = struct
 
-  module Helpers = Base.AstHelpers(Loc)
-
-  open Loc
+  open Generator.Loc
   open Camlp4.PreCast
   open Description
+
+  module Helpers = Generator.AstHelpers
 
   type context = {
     argmap : Type.qname Type.NameMap.t;
@@ -208,4 +208,4 @@ module Builder(Loc : Defs.Loc) = struct
 
 end
 
-module Functor = Base.Register(Description)(Builder)
+include Base.Register(Description)(Builder)

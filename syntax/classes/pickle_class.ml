@@ -32,14 +32,13 @@ module Description : Defs.ClassDescription = struct
   let depends = [Typeable_class.depends; Eq_class.depends]
 end
 
-module Builder(Loc : Defs.Loc) = struct
+module Builder(Generator : Defs.Generator) = struct
 
-  module Helpers = Base.AstHelpers(Loc)
-  module Generator = Base.Generator(Loc)(Description)
-
-  open Loc
+  open Generator.Loc
   open Camlp4.PreCast
   open Description
+
+  module Helpers = Generator.AstHelpers
 
   let bind, seq =
     let bindop = ">>=" and seqop = ">>" in
@@ -264,4 +263,4 @@ module Builder(Loc : Defs.Loc) = struct
 
 end
 
-module Dump = Base.Register(Description)(Builder)
+include Base.Register(Description)(Builder)

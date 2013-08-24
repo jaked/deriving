@@ -19,7 +19,7 @@ let translate_sig deriver _ types =
   let decls = Base.display_errors _loc Type.Translate.decls types in
   Base.derive_sig _loc decls deriver
 
-let register (desc, _ as class_) =
+let register desc class_ =
   let module Desc = (val desc : Defs.ClassDescription) in
   let name = String.uncapitalize Desc.classname in
   Pa_type_conv.add_generator name (translate_str class_);

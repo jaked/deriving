@@ -28,14 +28,13 @@ module Description : Defs.ClassDescription = struct
   let depends = []
 end
 
-module Builder(Loc : Defs.Loc) = struct
+module Builder(Generator : Defs.Generator) = struct
 
-  module Helpers = Base.AstHelpers(Loc)
-  module Generator = Base.Generator(Loc)(Description)
-
-  open Loc
+  open Generator.Loc
   open Camlp4.PreCast
   open Description
+
+  module Helpers = Generator.AstHelpers
 
   let wrap min max =
     [ <:str_item< let min_bound = $min$ >>; <:str_item< let max_bound = $max$ >> ]
@@ -94,4 +93,4 @@ module Builder(Loc : Defs.Loc) = struct
 
 end
 
-module Bounded = Base.Register(Description)(Builder)
+include Base.Register(Description)(Builder)

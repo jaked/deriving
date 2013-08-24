@@ -178,7 +178,13 @@ module AstHelpers(Loc : Loc) = struct
 
 end
 
-module Generator(Loc: Loc)(Desc : ClassDescription) = struct
+module type InnerClassDescription = sig
+  include ClassDescription
+  val find_predefined: Type.qname -> Type.qname
+  val depends: (module DepClassBuilder) list
+end
+
+module Generator(Loc: Loc)(Desc : InnerClassDescription) = struct
 
   (** How does it works ?
 
@@ -222,7 +228,9 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
 
   *)
 
-  module Helpers = AstHelpers(Loc)
+  module Loc = Loc
+  module AstHelpers = AstHelpers(Loc)
+  module Helpers = AstHelpers
   module Untranslate = Helpers.Untranslate
 
   open Loc
@@ -259,7 +267,7 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
     map#expr e
 
   let import_depend ctxt ty depend =
-    let module Dep = (val depend : FullClassBuilder)(Loc) in
+    let module Dep = (val depend : DepClassBuilder)(Loc) in
     let argmap =
       NameMap.map (fun qname -> qname @ [Dep.classname]) ctxt.argmap
     and mod_insts =
@@ -397,7 +405,7 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
       | _ ->
 	(* External module: apply classical functor. *)
         let qname =
-	  try List.assoc qname Desc.predefs
+	  try Desc.find_predefined qname
 	  with Not_found -> qname in
 	List.fold_left
 	  (fun m p -> <:module_expr< $m$ ($self#expr ctxt p$) >>)
@@ -648,37 +656,56 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
 
 end
 
-
-let derive_str _loc decls (desc, class_builder) =
+let derive_str _loc decls class_builder =
   let module Loc = struct let _loc = _loc end in
-  let module Desc = (val desc : ClassDescription) in
-  let module Class = (val class_builder : ClassBuilder)(Loc) in
+  let module Class = (val class_builder : InnerClassBuilder)(Loc) in
   display_errors _loc Class.generate decls
 
-let derive_sig _loc decls (desc, class_builder) =
+let derive_sig _loc decls class_builder =
   let module Loc = struct let _loc = _loc end in
-  let module Desc = (val desc : ClassDescription) in
-  let module Class = (val class_builder : ClassBuilder)(Loc) in
+  let module Class = (val class_builder : InnerClassBuilder)(Loc) in
   display_errors _loc Class.generate_sigs decls
 
-
-let generators = Hashtbl.create 15
-let hashtbl_add (desc, _ as deriver) =
+let generators : (string, (module InnerClassBuilder)) Hashtbl.t =
+  Hashtbl.create 15
+let hashtbl_add desc deriver =
   let module Desc = (val desc : ClassDescription) in
   Hashtbl.add generators Desc.classname deriver
 let register_hook = ref [hashtbl_add]
 let add_register_hook f = register_hook := f :: !register_hook
-let register (desc, deriver) =
-  List.iter (fun f -> f (desc, deriver)) !register_hook
+let register desc deriver =
+  List.iter (fun f -> f desc deriver) !register_hook
 let find classname =
   try Hashtbl.find generators classname
   with Not_found -> raise (NoSuchClass classname)
 let is_registered classname = Hashtbl.mem generators classname
 
+module MakeInnerDesc(Desc : Defs.ClassDescription) : InnerClassDescription =
+struct
+  include Desc
+  let find_predefined qname = List.assoc qname Desc.predefs
+end
+
 module Register
-    (Desc : ClassDescription)
+    (Desc : Defs.ClassDescription)
     (MakeClass : ClassBuilder) = struct
 
- let _ = register ((module Desc : ClassDescription), (module MakeClass : ClassBuilder))
+  module InnerDesc = MakeInnerDesc(Desc)
+  module Builder(Loc: Loc) = MakeClass(Generator(Loc)(InnerDesc))
+
+  let _ = register (module Desc) (module Builder : InnerClassBuilder)
+
+end
+
+module RegisterFull
+    (Desc : Defs.ClassDescription)
+    (MakeClass : FullClassBuilder) = struct
+
+  module InnerDesc = MakeInnerDesc(Desc)
+  module Builder(Loc: Loc) = MakeClass(Generator(Loc)(InnerDesc))
+
+  let _ = register (module Desc) (module Builder : InnerClassBuilder)
+
+  let depends = (module Builder : DepClassBuilder)
 
 end

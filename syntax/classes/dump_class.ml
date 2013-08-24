@@ -31,14 +31,13 @@ module Description : Defs.ClassDescription = struct
   let depends = []
 end
 
-module Builder(Loc : Defs.Loc) = struct
+module Builder(Generator : Defs.Generator) = struct
 
-  module Helpers = Base.AstHelpers(Loc)
-  module Generator = Base.Generator(Loc)(Description)
-
-  open Loc
+  open Generator.Loc
   open Camlp4.PreCast
   open Description
+
+  module Helpers = Generator.AstHelpers
 
   let wrap ?(buffer="buffer") ?(stream="stream") to_buffer from_stream =
     [ <:str_item< let to_buffer $lid:buffer$ = function $list:to_buffer$ >> ;
@@ -163,4 +162,4 @@ module Builder(Loc : Defs.Loc) = struct
 
 end
 
-module Dump = Base.Register(Description)(Builder)
+include Base.Register(Description)(Builder)

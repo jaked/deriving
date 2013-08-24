@@ -32,14 +32,13 @@ module Description : Defs.ClassDescription = struct
   let depends = []
 end
 
-module Builder(Loc : Defs.Loc) = struct
+module Builder(Generator : Defs.Generator) = struct
 
-  module Helpers = Base.AstHelpers(Loc)
-  module Generator = Base.Generator(Loc)(Description)
-
-  open Loc
+  open Generator.Loc
   open Camlp4.PreCast
   open Description
+
+  module Helpers = Generator.AstHelpers
 
   let mkName tname =
     let file_name, sl, _, _, _, _, _, _ = Loc.to_tuple _loc in
@@ -103,6 +102,4 @@ module Builder(Loc : Defs.Loc) = struct
 
 end
 
-module Typeable = Base.Register(Description)(Builder)
-
-let depends = (module Builder : Defs.FullClassBuilder)
+include Base.RegisterFull(Description)(Builder)
