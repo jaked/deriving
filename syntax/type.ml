@@ -24,12 +24,15 @@ and rhs = [`Fresh of expr option * repr * [`Private|`Public]
           |`Nothing]
 and repr =
     Sum of summand list
+  | GSum of name * gsummand list
   | Record of field list
 and field = name * poly_expr * [`Mutable | `Immutable]
 and summand = name * expr list
+and gsummand = name * expr list * expr list
 and constraint_ = expr * expr
 and expr =  (* elements that can be nested *)
     [ `Param of param
+    | `GParam of param * expr
     | `Label of ([`Optional|`NonOptional] * name * expr * expr)
     | `Function of (expr * expr)
     | `Constr of (qname * expr list)
@@ -44,17 +47,80 @@ and variant = [`Gt | `Lt | `Eq] * tagspec list
 and tagspec = Tag of name * expr list
               | Extends of expr
 
+let rec compare_expr (e1: expr) (e2: expr) = match e1, e2 with
+| `Param p1, `Param p2
+| `Param p1, `GParam (p2, _)
+| `GParam (p1, _), `Param p2
+| `GParam (p1, _), `GParam(p2, _) -> compare p1 p2
+| _, `Param _ -> -1
+| `Param _, _ -> 1
+| _, `GParam _ -> -1
+| `GParam _, _ -> 1
+
+| `Label (t1, n1, e1, e1'), `Label (t2, n2, e2, e2') ->
+   let c = compare t1 t2 in
+   if c <> 0 then c else
+   let c = compare n1 n2 in
+   if c <> 0 then c else
+   let c = compare_expr e1 e2 in
+   if c <> 0 then c else
+   let c = compare_expr e1' e2' in
+   c
+| _, `Label _ -> -1
+| `Label _, _ -> 1
+
+| `Function (e1, e1'), `Function (e2, e2') ->
+   let c = compare_expr e1 e2 in
+   if c <> 0 then c else
+   let c = compare_expr e1' e2' in
+   c
+| `Function _, _ -> -1
+| _, `Function _ -> 1
+
+| `Constr (n1, es1), `Constr (n2, es2) ->
+   let c = compare n1 n2 in
+   if c <> 0 then c else
+   let c = compare_expr_list es1 es2 in
+   c
+| `Constr _, _ -> -1
+| _, `Constr _ -> 1
+
+| `Tuple es1, `Tuple es2 -> compare_expr_list es1 es2
+| _, `Tuple _ -> -1
+| `Tuple _, _ -> 1
+
+| `Object _, `Object _ -> 0
+| `Object _, _ -> -1
+| _, `Object _ -> 1
+
+| `Class _, `Class _ -> 0
+
+and compare_expr_list es1 es2 = match es1, es2 with
+| [],  [] -> 0
+| _, [] -> -1
+| [], _ -> 1
+| e1 :: es1, e2 :: es2 ->
+   let c = compare_expr e1 e2 in
+   if c <> 0 then c else
+   let c = compare_expr_list es1 es2 in
+   c
+
+
 module Param = struct type t = param let compare = compare end
 module ParamSet = Set.Make(Param)
 module ParamMap = Map.Make(Param)
 
-module Expr = struct type t = expr let compare = compare end
+module Expr = struct type t = expr let compare = compare_expr end
 module ExprSet = Set.Make(Expr)
 module ExprMap = Map.Make(Expr)
 
 module E = struct
   type t = name * expr list
-  let compare = compare
+  let compare (n1, es1) (n2, es2) =
+    let c = compare n1 n2 in
+    if c <> 0 then c else
+    let c = compare_expr_list es1 es2 in
+    c
 end
 module ESet = Set.Make(E)
 module EMap = Map.Make(E)
@@ -82,6 +148,8 @@ object (self : 'self)
     self#crush (match r with
                     | Sum summands ->
                         List.map self#summand summands
+                    | GSum (_, summands) ->
+                        List.map self#gsummand summands
                     | Record fields ->
                         List.map self#field fields)
 
@@ -91,12 +159,16 @@ object (self : 'self)
   method summand (_,es) =
     self#crush (List.map self#expr es)
 
+  method gsummand (_,es1,es2) =
+    self#crush (List.map self#expr (es1 @ es2))
+
   method constraint_ (e1,e2) =
     self#crush [self#expr e1; self#expr e2]
 
   method expr e =
     self#crush (match e with
                     `Param _
+                  | `GParam (_, _)
                   | `Object _
                   | `Class _ -> []
                   | `Label (_, _, e1, e2)
@@ -131,6 +203,7 @@ object (self : 'self)
 
   method repr = function
     | Sum summands -> Sum (List.map (self # summand) summands)
+    | GSum (name, summands) -> GSum (name, List.map (self # gsummand) summands)
     | Record fields -> Record (List.map (self # field) fields)
 
   method field (name, poly_expr, flag) =
@@ -139,13 +212,17 @@ object (self : 'self)
   method summand (name, exprs) =
     (name, List.map (self # expr) exprs)
 
+  method gsummand (name, exprs, params) =
+    (name, List.map (self # expr) exprs, List.map (self # expr) params)
+
   method constraint_ (e1, e2) =
     (self#expr e1, self#expr e2)
 
   method expr = function
     | `Object _
     | `Class _
-    | `Param _ as e -> e
+    | `Param _
+    | `GParam _ as e -> e
     | `Label (flag, name, e1, e2) -> `Label (flag, name, self # expr e1, self # expr e2)
     | `Function (e1, e2) -> `Function (self # expr e1, self # expr e2)
     | `Constr (qname, exprs) -> `Constr (qname, List.map (self # expr) exprs)
@@ -166,13 +243,17 @@ module Translate =
 struct
   open Camlp4.PreCast
 
+  let anon_param =
+    let id = ref 0 in
+    fun () -> incr id; "_" ^ string_of_int !id
+
   let param = function
     | Ast.TyQuP (loc, name) -> name, Some `Plus
     | Ast.TyQuM (loc, name) -> name, Some `Minus
     | Ast.TyQuo (loc, name)  -> name, None
-    | Ast.TyAnP _ -> "", Some `Plus
-    | Ast.TyAnM _ -> "", Some `Minus
-    | Ast.TyAny _ -> "", None
+    | Ast.TyAnP _ -> anon_param (), Some `Plus
+    | Ast.TyAnM _ -> anon_param (), Some `Minus
+    | Ast.TyAny _ -> anon_param (), None
     | _ -> assert false
 
   let params = List.map param
@@ -313,16 +394,62 @@ struct
       | Ast.TyId (_, c)                  -> (ident c, []), []
       | Ast.TyOf (_, Ast.TyId (_, c), t) ->
           let es, vs = List.split (list expr split_and t) in (ident c, es), List.concat vs
-      | Ast.TyCol (_, Ast.TyId (_, c), _) ->
-          failwith "deriving does not currently support GADT"
       | _                                -> assert false
+
+    let replace_param params e =
+      let params = List.combine params P.params in
+      let map = object (self)
+        inherit transform as super
+        method expr e =
+          try
+            let p = List.assoc e params in
+            `GParam (p, e)
+          with Not_found ->
+            match e with
+            | `Param p ->
+              failwith ("deriving does not support existantial type "
+                        ^"or partially instantiated return type in GADT");
+            | e -> super # expr e
+      end
+      in
+      map # expr e
+
+    let ret_type rt =
+      match expr rt with
+      | `Constr ([id], params), [] -> id, params
+      | `Constr ([_], _), _ :: _ ->
+        failwith ("deriving does not currently support polymorphic variant "
+                  ^"within GADT")
+      | _ -> assert false
+
+    let gsummand : Ast.ctyp -> string * gsummand = function
+      | Ast.TyCol (_, Ast.TyId (_, c), Ast.TyArr(_, t, rt)) ->
+          let tname, params = ret_type rt in
+          let args, vs = List.split (list expr split_and t) in
+          if List.concat vs <> [] then
+            failwith ("deriving does not currently support polymorphic variant "
+                      ^"within GADT");
+          let args = List.map (replace_param params) args in
+          tname, (ident c, args, params)
+      | Ast.TyCol (_, Ast.TyId (_, c), rt) ->
+          let tname, params = ret_type rt in
+          tname, (ident c, [], params)
+      | _                                 -> assert false
+
+    let is_gadt summands =
+      List.exists (function Ast.TyCol _ -> true | _ -> false) summands
 
     let rec repr = function
       | Ast.TyRec (loc, fields) ->
           let fields, vs = List.split (list field split_semi fields) in
             Record fields, List.concat vs
       | Ast.TySum (loc, summands) ->
-          let summands, vs = List.split (list summand split_or summands) in
+          let summands = list (fun x -> x) split_or summands in
+          if is_gadt summands then
+            let tname, summands = List.split (List.map gsummand summands) in
+            GSum (List.hd tname, summands), []
+          else
+            let summands, vs = List.split (List.map summand summands) in
             Sum summands, List.concat vs
       | e -> failwith ("deriving: unexpected representation type ("^Utils.DumpAst.ctyp e^")")
 
@@ -426,10 +553,18 @@ struct
   open Camlp4.PreCast
   open C
 
-  let param = function
-    | p, None        -> <:ctyp<  '$lid:p$ >>
-    | p, Some `Plus  -> <:ctyp< +'$lid:p$ >>
-    | p, Some `Minus -> <:ctyp< -'$lid:p$ >>
+  let param (name, v) =
+    if name.[0] = '_'
+    then
+      match v with
+      | None        -> Ast.TyAny _loc
+      | Some `Plus  -> Ast.TyAnP _loc
+      | Some `Minus -> Ast.TyAnM _loc
+    else
+      match v with
+      | None        -> <:ctyp<  '$lid:name$ >>
+      | Some `Plus  -> <:ctyp< +'$lid:name$ >>
+      | Some `Minus -> <:ctyp< -'$lid:name$ >>
 
   let rec qname = function
     | [] -> assert false
@@ -444,6 +579,7 @@ struct
   let expr =
     let rec expr : expr -> Ast.ctyp = function
         `Param p -> param p
+      | `GParam (p, e) -> expr e
       | `Function (f, t) -> <:ctyp< $expr f$ -> $expr t$ >>
       | `Tuple [t] -> expr t
       | `Tuple ts -> Ast.TyTup (_loc, Ast.tySta_of_list (List.map expr ts))
@@ -479,11 +615,21 @@ struct
   and summand (name, (args : expr list)) =
       let args = Ast.tyAnd_of_list (List.map expr args) in
         <:ctyp< $uid:name$ of $args$ >>
+  and gsummand tname (name, (args : expr list), (params : expr list)) =
+      let rt = expr (`Constr ([tname], params)) in
+      let arg =
+        match args with
+        | [] -> rt
+        | _ :: _ -> <:ctyp< $Ast.tyAnd_of_list (List.map expr args)$ -> $rt$ >> in
+      <:ctyp< $uid:name$ : $arg$ >>
+
   and field ((name, t, mut) : field) = match mut with
       | `Mutable   -> <:ctyp< $lid:name$ : mutable $poly t$ >> (* mutable l : t doesn't work; perhaps a camlp4 bug *)
       | `Immutable -> <:ctyp< $lid:name$ : $poly t$ >>
   and repr = function
       | Sum summands  -> Ast.TySum (_loc,Ast.tyOr_of_list (List.map summand summands))
+      | GSum (tname, summands)  ->
+          Ast.TySum (_loc,Ast.tyOr_of_list (List.map (gsummand tname) summands))
       | Record fields -> <:ctyp< { $list:List.map field fields $ }>>
 
   let constraint_ (e1,e2) = (expr e1, expr e2)
@@ -504,6 +650,7 @@ let free_tvars =
      method poly_expr = assert false
      method expr = function
        | `Param p  -> ParamSet.singleton p
+       | `GParam (p, _)  -> ParamSet.singleton p
        | e -> default#expr e
   end in o#expr
 
@@ -512,7 +659,8 @@ let contains_tvars, contains_tvars_decl =
      inherit [bool] fold as default
      method crush = List.exists F.id
      method expr = function
-       | `Param _ -> true
+       | `Param _
+       | `GParam _ -> true
        | e -> default#expr e
   end in (o#expr, o#decl)
 
@@ -521,7 +669,16 @@ let build_subst l = NameMap.fromList l
 let substitute map = object
   inherit transform as super
   method expr = function
-    | `Param (p,_) when NameMap.mem p map -> NameMap.find p map
+    | `Param (p,_) when NameMap.mem p map ->
+      begin match NameMap.find p map with
+        | `GParam (p, _) -> `Param p
+        | e -> e
+      end
+    | `GParam ((p, _), e) when NameMap.mem p map ->
+      begin match NameMap.find p map with
+        | `Param p -> `GParam (p, e)
+        | e -> e
+      end
     | e -> super#expr e
 end
 let substitute_decl map =
@@ -533,6 +690,19 @@ let substitute_rhs map =
 let substitute_constraint map =
   (substitute map)#constraint_
 
+let rename map = object (self)
+  inherit transform as super
+  method expr = function
+    | `Param (p,v) when NameMap.mem p map ->
+      `Param(NameMap.find p map,v)
+    | `GParam ((p,v),e) when NameMap.mem p map ->
+      `GParam((NameMap.find p map,v), self#expr e)
+    | e -> super#expr e
+end
+let rename_rhs map =
+  (rename map)#rhs
+let rename_constraint map =
+  (rename map)#constraint_
 
 
 (** Pretty-print for error-message *)
@@ -549,4 +719,3 @@ let print_rhs ty =
   ignore(Format.flush_str_formatter ());
   Printer.print None (fun p fmt -> p#ctyp Format.str_formatter) (Unt.rhs ty);
   Format.flush_str_formatter ()
-

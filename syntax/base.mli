@@ -65,6 +65,7 @@ module Generator(Loc: Loc)(Desc : ClassDescription) : sig
     method constr: context -> Type.qname * Type.expr list -> Ast.module_expr
 
     method param: context -> Type.param -> Ast.module_expr
+    method gparam: context -> Type.param * Type.expr -> Ast.module_expr
 
     method wrap: context -> ?default:Type.name option -> Type.expr -> Ast.str_item list -> Ast.module_expr
 
@@ -76,6 +77,10 @@ module Generator(Loc: Loc)(Desc : ClassDescription) : sig
 	?eq:Type.expr -> context ->
 	  Type.name -> Type.expr list -> Type.constraint_ list ->
 	    Type.summand list -> Ast.str_item list
+    method gsum:
+	?eq:Type.expr -> context ->
+	  Type.name -> Type.expr list -> Type.constraint_ list ->
+	    Type.gsummand list -> Ast.str_item list
     method virtual tuple: context -> Type.expr list -> Ast.str_item list
     method virtual variant:
 	context ->

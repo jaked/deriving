@@ -109,6 +109,11 @@ module AstHelpers(Loc : Loc) = struct
     | [x] -> x
     | x::xs -> Ast.ExTup (_loc, List.fold_left (fun e t -> Ast.ExCom (_loc, e,t)) x xs)
 
+  let tuple_patt : Ast.patt list -> Ast.patt = function
+    | [] -> <:patt< () >>
+    | [x] -> x
+    | x::xs -> Ast.PaTup (_loc, List.fold_left (fun e t -> Ast.PaCom (_loc, e,t)) x xs)
+
   let tuple ?(param="v") n : string list * Ast.patt * Ast.expr =
     let v n = Printf.sprintf "%s%d" param n in
       match n with
@@ -480,6 +485,24 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
 
       let cluster_argmap = make_argmap cluster.Clusters.params in
 
+      let rec wrap_local_types (args : expr list) body =
+        match args with
+        | [] -> body
+        | `Param (arg, _) :: args
+        | `GParam ((arg, _),_) :: args ->
+            let id = "deriving_" ^ random_id 8 ^ "_" ^ arg in
+            let pat =
+              (* (module $M_arg$ : $class_sig ...$ ) *)
+              Ast.PaTyc(_loc, Ast.PaMod (_loc, "M_" ^ arg),
+                        Ast.TyPkg(_loc,
+                                  gen#class_sig NameMap.empty (`Constr ([id], []))))
+            in
+            wrap_local_types args
+              <:expr< (fun (type $lid:id$) -> (function $pat$ -> $body$))
+                     (module $uid:"M_"^arg$) >>
+          | _ -> assert false
+        in
+
       let generate_instance (tname, eparams as inst) =
 	let mod_insts =
 	  EMap.mapi
@@ -494,7 +517,7 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
 	  List.find (fun (tn,_,_,_,_) -> tname = tn) decls in
 	let subst = create_subst params eparams in
 	let body = gen#pack ctxt.argmap ty (gen#rhs ctxt subst decl) in
-	<:binding< $lid:EMap.find inst fun_names$ = lazy $body$ >>
+	EMap.find inst fun_names, <:expr< lazy $body$ >>
       in
 
       let generate_functor (tname,params,_,_,_ as decl) =
@@ -556,17 +579,35 @@ module Generator(Loc: Loc)(Desc : ClassDescription) = struct
 	>>
       in
 
+      let is_gadt = function
+        | (_,_,`Fresh(_,GSum _,_),_,_) -> true
+        | _ -> false in
+      let contains_gadt c = List.exists is_gadt c.Clusters.decls in
+
       if cluster.Clusters.instances <> [] then
-	let intances =
+        let inst_exprs = List.map generate_instance cluster.Clusters.instances in
+        let bindings =
+          List.map (fun (id, e) -> <:binding< $lid:id$ = $e$ >>) inst_exprs in
+        let items =
+          if not (contains_gadt cluster) then
+            <:str_item< let rec $list:bindings$ >>
+          else
+            let e = List.map (fun (id, _) -> <:expr< $lid:id$ >>) inst_exprs in
+            let p = List.map (fun (id, _) -> <:patt< $lid:id$ >>) inst_exprs in
+            let body =
+              wrap_local_types
+                (List.map (fun p -> `Param p) cluster.Clusters.params)
+                <:expr< let rec $list:bindings$ in $Helpers.tuple_expr e$ >> in
+            <:str_item< let $Helpers.tuple_patt p$ = $body$ >>
+        in
+	let mod_expr =
 	  List.fold_right
 	    (add_functor_param cluster_argmap)
 	    cluster.Clusters.params
-	    <:module_expr< struct
-	      let rec $list:List.map generate_instance cluster.Clusters.instances$
-	    end >>
+	    <:module_expr< struct $items$ end >>
 	in
 	<:str_item<
-          module $uid:cluster_name$ = $intances$
+          module $uid:cluster_name$ = $mod_expr$
 	  $list:List.map generate_functor cluster.Clusters.decls$
         >>
       else

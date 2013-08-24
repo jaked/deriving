@@ -174,3 +174,27 @@ type ii' = {
     int32': Int32.t;
     int64': Int64.t;
   } deriving (Eq, Dump, Typeable, Pickle, Show)
+
+(* GADTs *)
+
+type _ g1 =
+  | I : int -> int g1
+  | C : 'a -> 'a g1
+  | L : 'a list -> 'a list g1
+  | R : 'a g1 * 'a -> 'a g1
+  | B : 'a * 'a * int -> 'a g1
+      deriving (Show)
+
+type (_, _) g2 =
+  | A : 'a -> ('a, 'b) g2
+  | B : 'b -> ('a, 'b) g2
+  | R : ('b, 'a) g2 -> ('a, 'b) g2
+      deriving (Show)
+
+type _ g3 =
+  | A : 'a g4 * 'a -> 'a g3
+  | B : int g3
+and _ g4 =
+  | C : 'a g3 * 'a -> 'a g4
+  | D : float g4
+      deriving (Show)

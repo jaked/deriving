@@ -1,3 +1,7 @@
+== trunk
+
+  * Experimental minimalistic support of GADT
+
 == 0.4-ocsigen
 
   * Compatibility with typeconv >= 108.07.00

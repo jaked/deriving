@@ -13,12 +13,19 @@ let extract_recursive_calls decls : ESet.t list =
   let obj = (object (self)
     inherit [ESet.t] fold as default
     method crush sets = List.fold_left ESet.union ESet.empty sets
-    method expr e = match e with
+    method expr e =
+      match e with
       | `Constr ([name], args) as e when List.mem name names ->
 	ESet.add (name, args) (default#expr e)
       | e -> default#expr e
+    method decl d =
+      match d with
+      | (tname, params, `Fresh (_, GSum _, _), _, _) ->
+          (* All GADT are considered recursives... cf. base.ml*)
+          ESet.add (tname, List.map (fun p -> `Param p) params) (default#decl d)
+      | _  -> default#decl d
   end) in
-  List.map (fun (_,_,rhs,_,_) -> obj#rhs rhs) decls
+  List.map obj#decl decls
 
 (** The function [close_decls decls] computes, for the set of type
     declarations [decls], the actual instances of these types that are
@@ -71,10 +78,18 @@ let close_decls (decls: Type.decl list) : (Type.decl * ESet.t) list =
     'a 'b 'c ... *)
 let rename_params (name, params, rhs, constraints, deriving as decl) =
   if deriving then decl else
-    let map = (List.mapn (fun (o, v) n -> o, (typevar_of_int n, v)) params) in
-    let subst = NameMap.fromList (List.map (fun (o, n) -> o, `Param n) map) in
-    ((name, List.map snd map, substitute_rhs subst rhs,
-      List.map (substitute_constraint subst) constraints, false))
+    let map =
+      List.mapn
+        (fun (o, v) n ->
+           let n' =
+             if o.[0] = '_'
+             then "_" ^ typevar_of_int n
+             else typevar_of_int n in
+           (o, (n', v)))
+        params in
+    let subst = NameMap.fromList (List.map (fun (o, (n, _)) -> o, n) map) in
+    ((name, List.map snd map, rename_rhs subst rhs,
+      List.map (rename_constraint subst) constraints, false))
 
 (** Group type declaration (and the associated instances involved in
     recursion) by the set of freevars in there "associated recursives

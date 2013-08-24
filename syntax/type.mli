@@ -27,11 +27,13 @@ and rhs =
     | `Nothing
     | `Variant of variant ]
 
-and repr = Sum of summand list | Record of field list
+and repr = Sum of summand list  | GSum of name * gsummand list | Record of field list
 
 and field = name * poly_expr * [ `Immutable | `Mutable ]
 
 and summand = name * expr list
+
+and gsummand = name * expr list * expr list
 
 and constraint_ = expr * expr
 
@@ -42,6 +44,7 @@ and expr =
     | `Label of [ `NonOptional | `Optional ] * name * expr * expr
     | `Object of [ `NYI ]
     | `Param of param
+    | `GParam of param * expr
     | `Tuple of expr list ]
 
 and poly_expr = param list * expr
@@ -68,6 +71,9 @@ val substitute_expr : subst -> expr -> expr
 val substitute_rhs : subst -> rhs -> rhs
 val substitute_constraint : subst -> constraint_ -> constraint_
 
+val rename_rhs : name NameMap.t -> rhs -> rhs
+val rename_constraint : name NameMap.t -> constraint_ -> constraint_
+
 (** *)
 
 class virtual ['a] fold : object
@@ -80,6 +86,7 @@ class virtual ['a] fold : object
   method repr : repr -> 'a
   method rhs : rhs -> 'a
   method summand : summand -> 'a
+  method gsummand : gsummand -> 'a
   method tagspec : tagspec -> 'a
   method variant : variant -> 'a
 end
@@ -93,6 +100,7 @@ class transform : object
   method repr : repr -> repr
   method rhs : rhs -> rhs
   method summand : summand -> summand
+  method gsummand : gsummand -> gsummand
   method tagspec : tagspec -> tagspec
   method variant : variant -> variant
 end

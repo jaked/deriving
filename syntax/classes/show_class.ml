@@ -43,7 +43,7 @@ module Builder(Loc : Defs.Loc) = struct
   open Description
 
   let wrap formatter =
-    [ <:str_item< let format formatter = function $list:formatter$ >> ]
+    [ <:str_item< let format formatter : a -> unit = function $list:formatter$ >> ]
 
   let in_a_box box i e =
     <:expr<
@@ -105,6 +105,9 @@ module Builder(Loc : Defs.Loc) = struct
     method sum ?eq ctxt tname params constraints summands =
       wrap (List.map (self#case ctxt) summands)
 
+    method gsum ?eq ctxt tname params constraints gsummands =
+      let summands = List.map (fun (name, args, _) -> (name, args)) gsummands in
+      wrap (List.map (self#case ctxt) summands)
 
     method field ctxt (name, ty, mut) =
       <:expr< Format.pp_print_string formatter $str:name ^ " = "$;

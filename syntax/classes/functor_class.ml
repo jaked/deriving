@@ -148,8 +148,10 @@ module Builder(Loc : Defs.Loc) = struct
   and field context (name, (_,t), _) : Ast.expr =
     <:expr< $expr context t$ $lid:name$ >>
 
-  let rhs context = function
+  let rhs context : Pa_deriving_common.Type.rhs -> Ast.expr = function
     |`Fresh (_, _, `Private) -> raise (Base.Underivable "Functor cannot be derived for private types")
+    |`Fresh (_, Type.GSum (tname, summands), _)  ->
+        raise (Base.Underivable "Functor cannot be derived for GADT")
     |`Fresh (_, Type.Sum summands, _)  ->
        <:expr<  function $list:List.map (case context) summands$ >>
     |`Fresh (_, Type.Record fields, _) ->
