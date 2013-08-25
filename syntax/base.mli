@@ -17,11 +17,11 @@ open Defs
 val derive_str : Loc.t -> Type.decl list -> generator -> Ast.str_item
 val derive_sig : Loc.t -> Type.decl list -> generator -> Ast.sig_item
 
-module Register(Desc : ClassDescription)(MakeClass : ClassBuilder) : sig
+module RegisterClass(Desc : ClassDescription)(MakeClass : ClassBuilder) : sig
   val register_predefs : Type.qname -> Type.qname -> unit
 end
 
-module RegisterFull(Desc : ClassDescription)(MakeClass : FullClassBuilder) : sig
+module RegisterFullClass(Desc : ClassDescription)(MakeClass : FullBuilder) : sig
   val depends : (module DepClassBuilder)
   val register_predefs : Type.qname -> Type.qname -> unit
 end
@@ -32,3 +32,11 @@ val add_register_hook:
 
 val find : Type.name -> generator
 
+(**/**)
+
+module Register(Desc : ClassDescription)(MakeClass : InnerClassBuilder) : sig
+  (* Side effects only *)
+end
+
+module Generator(Loc : Loc)(Desc : ClassDescription) : Generator
+module AstHelpers(Loc : Loc) : AstHelpers

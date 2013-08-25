@@ -150,4 +150,4 @@ module Builder(Generator : Defs.Generator) = struct
 
 end
 
-module Show = Base.Register(Description)(Builder)
+include Base.RegisterClass(Description)(Builder)

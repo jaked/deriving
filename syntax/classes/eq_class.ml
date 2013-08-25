@@ -123,4 +123,4 @@ module Builder(Generator : Defs.Generator) = struct
 
 end
 
-include Base.RegisterFull(Description)(Builder)
+include Base.RegisterFullClass(Description)(Builder)

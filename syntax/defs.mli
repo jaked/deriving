@@ -131,7 +131,7 @@ module type FullClass = sig
     Type.expr -> Ast.module_expr
 end
 
-module type FullClassBuilder = functor (Generator: Generator) -> FullClass
+module type FullBuilder = functor (Generator: Generator) -> FullClass
 module type DepClassBuilder = functor (Loc: Loc) -> FullClass
 
 module type ClassDescription = sig
@@ -145,3 +145,10 @@ module type ClassDescription = sig
 end
 
 type generator = (module InnerClassBuilder)
+
+(**/**)
+
+(* Compat with <= 0.4-ocsigen *)
+
+module type FullClassBuilder = functor (Loc: Loc) -> FullClass
+

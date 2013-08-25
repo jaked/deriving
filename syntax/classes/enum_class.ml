@@ -96,4 +96,4 @@ module Builder(Generator : Defs.Generator) = struct
 
 end
 
-include Base.Register(Description)(Builder)
+include Base.RegisterClass(Description)(Builder)

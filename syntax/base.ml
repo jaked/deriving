@@ -184,7 +184,7 @@ module type InnerClassDescription = sig
   val depends: (module DepClassBuilder) list
 end
 
-module Generator(Loc: Loc)(Desc : InnerClassDescription) = struct
+module InnerGenerator(Loc: Loc)(Desc : InnerClassDescription) = struct
 
   (** How does it works ?
 
@@ -693,12 +693,12 @@ struct
   let () = List.iter (fun (a, b) -> register_predefined a b) predefs
 end
 
-module Register
+module RegisterClass
     (Desc : Defs.ClassDescription)
     (MakeClass : ClassBuilder) = struct
 
   module InnerDesc = MakeInnerDesc(Desc)
-  module Builder(Loc: Loc) = MakeClass(Generator(Loc)(InnerDesc))
+  module Builder(Loc: Loc) = MakeClass(InnerGenerator(Loc)(InnerDesc))
 
   let _ = register (module Desc : Defs.ClassDescription) (module Builder : InnerClassBuilder)
 
@@ -706,12 +706,12 @@ module Register
 
 end
 
-module RegisterFull
+module RegisterFullClass
     (Desc : Defs.ClassDescription)
-    (MakeClass : FullClassBuilder) = struct
+    (MakeClass : FullBuilder) = struct
 
   module InnerDesc = MakeInnerDesc(Desc)
-  module Builder(Loc: Loc) = MakeClass(Generator(Loc)(InnerDesc))
+  module Builder(Loc: Loc) = MakeClass(InnerGenerator(Loc)(InnerDesc))
 
   let _ = register (module Desc : Defs.ClassDescription) (module Builder : InnerClassBuilder)
 
@@ -719,3 +719,16 @@ module RegisterFull
   let register_predefs = InnerDesc.register_predefined
 
 end
+
+(* Compat with <= 0.4-ocsigen *)
+
+module Register
+    (Desc : Defs.ClassDescription)
+    (MakeClass : InnerClassBuilder) = struct
+
+  let _ = register (module Desc : Defs.ClassDescription) (module MakeClass : InnerClassBuilder)
+
+end
+
+module Generator(Loc : Loc)(Desc : ClassDescription) =
+  InnerGenerator(Loc)(MakeInnerDesc(Desc))
