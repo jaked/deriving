@@ -1,6 +1,7 @@
-== trunk
+== 0.5-ocsigen
 
   * Experimental minimalistic support of GADT
+  * Allows to register predefined instances
 
 == 0.4-ocsigen
 
