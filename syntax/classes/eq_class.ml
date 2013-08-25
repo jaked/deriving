@@ -41,6 +41,10 @@ module Builder(Generator : Defs.Generator) = struct
 
   module Helpers = Generator.AstHelpers
 
+  let and_guard x y = match x, y with
+  | <:expr< >>, e | e, <:expr< >> -> e
+  | x, y -> <:expr< $x$ && $y$ >>
+
   let lprefix = "l" and rprefix = "r"
 
   let wrap eq =
@@ -108,7 +112,7 @@ module Builder(Generator : Defs.Generator) = struct
           let rpatt, rguard, rcast = Generator.cast_pattern ctxt ~param:"r" t in
 	  let patt = <:patt< ($lpatt$, $rpatt$) >> in
 	  let eq = <:expr< $self#call_expr ctxt t "eq"$ $lcast$ $rcast$ >> in
-          <:match_case< $patt$ when $lguard$ && $rguard$ -> $eq$ >>
+          <:match_case< $patt$ when $and_guard lguard rguard$ -> $eq$ >>
 
     method variant ctxt tname params constraints (spec, tags) =
       wrap (List.map (self#polycase ctxt) tags @ [ <:match_case< _ -> false >> ])

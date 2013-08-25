@@ -124,7 +124,7 @@ module Builder(Generator : Defs.Generator) = struct
           Format.pp_print_char formatter '}'; >> in
       wrap [ <:match_case< $Helpers.record_pattern fields$ -> $in_hovbox format_record$ >>]
 
-    method polycase ctxt : Pa_deriving_common.Type.tagspec -> Ast.match_case = function
+    method polycase ctxt has_guard : Pa_deriving_common.Type.tagspec -> Ast.match_case = function
       | Type.Tag (name, []) ->
 	  let format_expr =
 	    <:expr< Format.pp_print_string formatter $str:"`" ^ name ^" "$ >> in
@@ -138,10 +138,15 @@ module Builder(Generator : Defs.Generator) = struct
           let patt, guard, cast = Generator.cast_pattern ctxt t in
 	  let format_expr =
 	    <:expr< $self#call_expr ctxt t "format"$ formatter $cast$ >> in
+          if guard <> <:expr< >> then has_guard := true;
           <:match_case< $patt$ when $guard$ -> $in_hovbox format_expr$ >>
 
     method variant ctxt tname params constraints (_,tags) =
-      wrap (List.map (self#polycase ctxt) tags @ [ <:match_case< _ -> assert false >> ])
+      let has_guard = ref false in
+      let body = List.map (self#polycase ctxt has_guard) tags in
+      wrap (if !has_guard
+            then body @ [ <:match_case< _ -> assert false >> ]
+            else body)
 
   end :> Generator.generator)
 

@@ -133,7 +133,20 @@ module AstHelpers(Loc : Loc) = struct
 
   (** *)
 
+  let rec lident qname =
+    match qname with
+      | [] -> invalid_arg "ident"
+      | [t] -> <:ident< $lid:t$ >>
+      | t::ts -> <:ident< $uid:t$.$lident ts$ >>
+
   let cast_pattern argmap ?(param="x") ty =
+    match ty with
+    | `Constr (id, _) ->
+      let ty = Untranslate.expr (instantiate_modargs argmap ty) in
+      (<:patt< #$id:lident id$ as $lid:param$ >>,
+       <:expr< >>,
+       <:expr< $lid:param$ >>)
+    | ty ->
     let ty = Untranslate.expr (instantiate_modargs argmap ty) in
     (<:patt< $lid:param$ >>,
      <:expr<
@@ -529,7 +542,8 @@ module InnerGenerator(Loc: Loc)(Desc : InnerClassDescription) = struct
 	  List.find (fun (tn,_,_,_,_) -> tname = tn) decls in
 	let subst = create_subst params eparams in
 	let body = gen#pack ctxt.argmap ty (gen#rhs ctxt subst decl) in
-	EMap.find inst fun_names, <:expr< lazy $body$ >>
+        let id = EMap.find inst fun_names in
+	id, <:expr< lazy (ignore($lid:id$); $body$) >>
       in
 
       let generate_functor (tname,params,_,_,_ as decl) =

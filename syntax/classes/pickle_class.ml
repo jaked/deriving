@@ -48,7 +48,7 @@ module Builder(Generator : Defs.Generator) = struct
     let unpickler = <:expr< let module R = Utils(Typeable) in $unpickler$ >> in
     let pickle = <:expr<
       let module W = Utils(Typeable)(Eq) in
-      let rec pickle = function $list:picklers$ in pickle >> in
+      let pickle = function $list:picklers$ in pickle >> in
     [ <:str_item< open $uid:runtimename$.Write >>;
       <:str_item< let pickle = $pickle$ >>;
       <:str_item< open $uid:runtimename$.Read >>;
