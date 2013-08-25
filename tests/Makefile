@@ -6,8 +6,8 @@ export OCAMLPATH
 OCAMLC     := ${OCAMLFIND} ocamlc
 OCAMLOPT   := ${OCAMLFIND} ocamlopt
 OCAMLDEP   := ${OCAMLFIND} ocamldep
-PP         := -package ${PROJECTNAME},${PROJECTNAME}.syntax -syntax camlp4o
-PPTC       := -package ${PROJECTNAME},${PROJECTNAME}.syntax_tc -syntax camlp4o
+PP         := -package ${PROJECTNAME},${PROJECTNAME}.syntax,optcomp -syntax camlp4o
+PPTC       := -package ${PROJECTNAME},${PROJECTNAME}.syntax_tc,optcomp -syntax camlp4o
 LIBS       := -I ../lib -package num
 
 OCAMLFLAGS   = -w Aef
@@ -25,7 +25,12 @@ SOURCES = tests_defs.ml         \
 	  show_tests.ml         \
           exp.ml                \
           inline.ml             \
-	  tc.ml                 \
+
+ifneq (${TYPECONV},)
+
+SOURCES += tc.ml                 \
+
+endif
 
 ##
 

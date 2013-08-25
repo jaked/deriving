@@ -141,9 +141,11 @@ struct
     | TyOfAmp (_, c1, c2) -> "TyOfAmp ("^ ctyp c1 ^ ", " ^ ctyp c2 ^")"
     | TyPkg (_, mt) -> failwith "first-class modules not supported"
     | TyAnt (_, s) -> "TyAnt("^s^")"
+#if ocaml_version >= (4, 00)
     | TyTypePol (_, c1, c2) -> "TyTypoPol("^ ctyp c1^ ", "^ ctyp c2 ^")"
     | TyAnP _ -> "TyAnP"
     | TyAnM _ -> "TyAnM"
+#endif
 end
 
 module Map = struct

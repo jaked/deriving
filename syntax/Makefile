@@ -14,10 +14,12 @@ SOURCES := id.ml                 \
            base.ml               \
            extend.ml             \
 
+utils.cmo utils.cmx .utils.ml.deps: \
+	LIBS+=-syntax camlp4o -package optcomp
 type.cmo type.cmx .type.ml.deps: \
-	LIBS+=-syntax camlp4o -package camlp4.quotations.r
+	LIBS+=-syntax camlp4o -package camlp4.quotations.r,optcomp
 base.cmo base.cmx .base.ml.deps: \
-	LIBS+=-syntax camlp4o -package camlp4.quotations.o
+	LIBS+=-syntax camlp4o -package camlp4.quotations.o,optcomp
 extend.cmo extend.cmx .extend.ml.deps: \
 	LIBS+=-syntax camlp4o -package camlp4.extend,camlp4.quotations.o
 pa_deriving.cmo pa_deriving.cmx .pa_deriving.ml.deps: \

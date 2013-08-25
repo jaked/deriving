@@ -494,11 +494,14 @@ module Generator(Loc: Loc)(Desc : InnerClassDescription) = struct
       let cluster_argmap = make_argmap cluster.Clusters.params in
 
       let rec wrap_local_types (args : expr list) body =
+#if ocaml_version < (4, 00)
+        body
+#else
         match args with
         | [] -> body
         | `Param (arg, _) :: args
         | `GParam ((arg, _),_) :: args ->
-            let id = "deriving_" ^ random_id 8 ^ "_" ^ arg in
+          let id = "deriving_" ^ random_id 8 ^ "_" ^ arg in
             let pat =
               (* (module $M_arg$ : $class_sig ...$ ) *)
               Ast.PaTyc(_loc, Ast.PaMod (_loc, "M_" ^ arg),
@@ -508,8 +511,9 @@ module Generator(Loc: Loc)(Desc : InnerClassDescription) = struct
             wrap_local_types args
               <:expr< (fun (type $lid:id$) -> (function $pat$ -> $body$))
                      (module $uid:"M_"^arg$) >>
-          | _ -> assert false
-        in
+        | _ -> assert false
+#endif
+      in
 
       let generate_instance (tname, eparams as inst) =
 	let mod_insts =
@@ -696,7 +700,7 @@ module Register
   module InnerDesc = MakeInnerDesc(Desc)
   module Builder(Loc: Loc) = MakeClass(Generator(Loc)(InnerDesc))
 
-  let _ = register (module Desc) (module Builder : InnerClassBuilder)
+  let _ = register (module Desc : Defs.ClassDescription) (module Builder : InnerClassBuilder)
 
   let register_predefs = InnerDesc.register_predefined
 
@@ -709,7 +713,7 @@ module RegisterFull
   module InnerDesc = MakeInnerDesc(Desc)
   module Builder(Loc: Loc) = MakeClass(Generator(Loc)(InnerDesc))
 
-  let _ = register (module Desc) (module Builder : InnerClassBuilder)
+  let _ = register (module Desc : Defs.ClassDescription) (module Builder : InnerClassBuilder)
 
   let depends = (module Builder : DepClassBuilder)
   let register_predefs = InnerDesc.register_predefined

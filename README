@@ -12,6 +12,7 @@ Requirements:
 =============
 
  * ocaml and camlp4 (>= 3.12)
+ * optcomp
  * type-conv (optionnal)
 
 Build intructions:
