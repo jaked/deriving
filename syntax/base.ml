@@ -142,7 +142,6 @@ module AstHelpers(Loc : Loc) = struct
   let cast_pattern argmap ?(param="x") ty =
     match ty with
     | `Constr (id, _) ->
-      let ty = Untranslate.expr (instantiate_modargs argmap ty) in
       (<:patt< #$id:lident id$ as $lid:param$ >>,
        <:expr< >>,
        <:expr< $lid:param$ >>)
