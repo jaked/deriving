@@ -472,9 +472,12 @@ struct
       | Ast.TyVrnInf (_, t) ->
           let es, vs = List.split (list tagspec split_or t) in
             `Variant ((`Lt, es), `Public), List.concat vs
+      | Ast.TyPrv (_, Ast.TyVrnInf (_, t)) ->
+          let es, vs = List.split (list tagspec split_or t) in
+            `Variant ((`Lt, es), `Private), List.concat vs
       | Ast.TyVrnInfSup (_, _, _) -> failwith "deriving does not currently support [ < > ] types"
       | Ast.TyNil _ -> `Nothing, []
-      | Ast.TyPrv _ -> failwith "deriving does not currently support private rows"
+      | Ast.TyPrv _ -> failwith "This fixed type has no row variable"
       | Ast.TyMan (_, eq, (Ast.TyRec _ | Ast.TySum _ as r)) ->
           let repr, v1 = repr r and ex, v2 = expr eq in
             `Fresh (Some ex, repr, `Public), v1 @ v2
