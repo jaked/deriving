@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: 5f5bd9e0d33acbbecf8f5ee9066eb325) *)
+(* DO NOT EDIT (digest: ed37f749fc02d18152843b9b8c522943) *)
 module OASISGettext = struct
 (* # 21 "src/oasis/OASISGettext.ml" *)
 
@@ -481,7 +481,7 @@ let package_default =
        [
           ("deriving-num", ["lib"]);
           ("pa_deriving_common", ["syntax"]);
-          ("pa_derving", ["syntax"]);
+          ("pa_deriving", ["syntax"]);
           ("pa_deriving_tc", ["syntax"]);
           ("pa_deriving_classes", ["syntax/classes"]);
           ("deriving", ["lib"])

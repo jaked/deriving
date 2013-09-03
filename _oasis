@@ -34,7 +34,7 @@ Library "pa_deriving_common"
   XMETADescription: Deriving syntax
   XMETARequires: camlp4
 
-Library "pa_derving"
+Library "pa_deriving"
   Path:       syntax
   FindlibParent: pa_deriving_common
   FindlibName : std
