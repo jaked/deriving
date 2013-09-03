@@ -7,6 +7,10 @@ License:     MIT
 Plugins:     META (0.3), DevFiles (0.3)
 BuildTools:      ocamlbuild
 
+Flag tc
+  Description: type-conv support
+  Default: true
+
 Library deriving
   Path:            lib
   Modules:         Deriving_Show, Deriving_Eq, Deriving_Bounded,
@@ -47,6 +51,8 @@ Library "pa_deriving"
 
 Library "pa_deriving_tc"
   Path:       syntax
+  Build$: flag(tc)
+  Install$: flag(tc)
   FindlibParent: pa_deriving_common
   FindlibName : tc
   BuildDepends: deriving.syntax,type_conv
