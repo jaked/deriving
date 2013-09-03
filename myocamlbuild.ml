@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: 49e7eefbbde2fc370f4e4d410c13a88c) *)
+(* DO NOT EDIT (digest: 031a9ebc86a641900983cd20564e8fa5) *)
 module OASISGettext = struct
 (* # 21 "src/oasis/OASISGettext.ml" *)
 
@@ -489,14 +489,17 @@ let package_default =
      lib_c = [];
      flags = [];
      includes =
-       [("syntax/classes", ["syntax"]); ("lib", ["syntax"; "syntax/classes"])
+       [
+          ("tests", ["lib"]);
+          ("syntax/classes", ["syntax"]);
+          ("lib", ["syntax"; "syntax/classes"])
        ];
      }
   ;;
 
 let dispatch_default = MyOCamlbuildBase.dispatch_default package_default;;
 
-# 500 "myocamlbuild.ml"
+# 503 "myocamlbuild.ml"
 (* OASIS_STOP *)
 
 let _ = Ocamlbuild_plugin.dispatch (fun hook ->
@@ -513,5 +516,6 @@ let _ = Ocamlbuild_plugin.dispatch (fun hook ->
              dep ["ocaml"; "ocamldep"; tag] [file])
           ["syntax/","deriving_common";
            "syntax/", "deriving";
+           "syntax/", "deriving_tc";
            "syntax/classes/","deriving_classes"];
       | _ -> ())

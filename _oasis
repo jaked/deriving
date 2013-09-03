@@ -75,3 +75,19 @@ Library "pa_deriving_classes"
   XMETADescription: Deriving syntax
   XMETAExtraLines: requires(syntax) = "deriving.syntax"
   XMETARequires: camlp4
+
+
+Executable test_notc
+  Path: tests
+  Install: false
+  CompiledObject: best
+  MainIs: notc.ml
+  BuildDepends: deriving
+
+Executable test_tc
+  Path: tests
+  Build$: flag(tc)
+  Install: false
+  CompiledObject: best
+  MainIs: tc.ml
+  BuildDepends: deriving

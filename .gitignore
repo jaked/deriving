@@ -12,3 +12,5 @@ _build
 setup.log
 setup.data
 syntax/id.ml
+*.native
+*.byte
