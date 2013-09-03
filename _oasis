@@ -45,6 +45,7 @@ Library "pa_derving"
   Modules:    Pa_deriving
   XMETAType: syntax
   XMETADescription: Deriving syntax
+  XMETAExtraLines: requires(syntax) = "deriving.syntax"
   XMETARequires: camlp4
 
 Library "pa_deriving_tc"
@@ -56,6 +57,7 @@ Library "pa_deriving_tc"
   Modules:    Pa_deriving_tc
   XMETAType: syntax
   XMETADescription: Deriving syntax
+  XMETAExtraLines: requires(syntax) = "deriving.syntax"
   XMETARequires: camlp4
 
 Library "pa_deriving_classes"
@@ -68,4 +70,5 @@ Library "pa_deriving_classes"
   BuildDepends: deriving.syntax
   XMETAType: syntax
   XMETADescription: Deriving syntax
+  XMETAExtraLines: requires(syntax) = "deriving.syntax"
   XMETARequires: camlp4

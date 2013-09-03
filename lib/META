@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 71d806d955a6f3bec2f653ce6d6dff10)
+# DO NOT EDIT (digest: 3afcb164eb52023530e1fc40e34fb111)
 version = "0.5"
 description =
 "Extension to OCaml for deriving functions from type declarations"
@@ -22,6 +22,7 @@ package "syntax" (
   requires = "camlp4"
   archive(syntax, preprocessor) = "pa_deriving_tc.cma"
   archive(syntax, toploop) = "pa_deriving_tc.cma"
+  requires(syntax) = "deriving.syntax"
   exists_if = "pa_deriving_tc.cma"
  )
  
@@ -31,6 +32,7 @@ package "syntax" (
   requires = "camlp4"
   archive(syntax, preprocessor) = "pa_derving.cma"
   archive(syntax, toploop) = "pa_derving.cma"
+  requires(syntax) = "deriving.syntax"
   exists_if = "pa_derving.cma"
  )
  
@@ -40,6 +42,7 @@ package "syntax" (
   requires = "camlp4"
   archive(syntax, preprocessor) = "pa_deriving_classes.cma"
   archive(syntax, toploop) = "pa_deriving_classes.cma"
+  requires(syntax) = "deriving.syntax"
   exists_if = "pa_deriving_classes.cma"
  )
 )
