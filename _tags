@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: d771a53edca628cf7ce648ae29188d69)
+# DO NOT EDIT (digest: c8e9fd61b10c24d51a2e39af5fe97aab)
 # Ignore VCS directories, you can use the same kind of rule outside 
 # OASIS_START/STOP if you want to exclude directories that contains 
 # useless stuff for the build process
@@ -13,8 +13,6 @@
 ".git": not_hygienic
 "_darcs": -traverse
 "_darcs": not_hygienic
-# Library deriving-num
-"lib/deriving-num.cmxs": use_deriving-num
 # Library pa_deriving_common
 "syntax/pa_deriving_common.cmxs": use_pa_deriving_common
 "syntax/utils.cmx": for-pack(Pa_deriving_common)
@@ -38,6 +36,8 @@
 <syntax/classes/*.ml{,i}>: pkg_camlp4
 <syntax/classes/*.ml{,i}>: pkg_camlp4.extend
 <syntax/classes/*.ml{,i}>: pkg_optcomp
+# Library deriving-num
+"lib/deriving-num.cmxs": use_deriving-num
 # Library deriving
 "lib/deriving.cmxs": use_deriving
 <lib/*.ml{,i}>: use_pa_deriving_classes

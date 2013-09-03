@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: ed37f749fc02d18152843b9b8c522943) *)
+(* DO NOT EDIT (digest: 49e7eefbbde2fc370f4e4d410c13a88c) *)
 module OASISGettext = struct
 (* # 21 "src/oasis/OASISGettext.ml" *)
 
@@ -479,11 +479,11 @@ let package_default =
   {
      MyOCamlbuildBase.lib_ocaml =
        [
-          ("deriving-num", ["lib"]);
           ("pa_deriving_common", ["syntax"]);
           ("pa_deriving", ["syntax"]);
           ("pa_deriving_tc", ["syntax"]);
           ("pa_deriving_classes", ["syntax/classes"]);
+          ("deriving-num", ["lib"]);
           ("deriving", ["lib"])
        ];
      lib_c = [];
@@ -499,28 +499,37 @@ let dispatch_default = MyOCamlbuildBase.dispatch_default package_default;;
 # 500 "myocamlbuild.ml"
 (* OASIS_STOP *)
 
-let name = "deriving"
-let version = "0.5"
+let lookup = ref (fun _ -> assert false)
 
 let id_dot_ml_rule = Ocamlbuild_plugin.rule "id.ml"
-    ~dep:"_oasis"
+    ~dep:MyOCamlbuildBase.env_filename
     ~prod:"syntax/id.ml" (fun env build ->
-      let pf x = Printf.sprintf x in
-      Echo ([pf "let name = %S" name; pf "let version = %S" version ], "syntax/id.ml")
-    )
+        let pf x = Printf.sprintf x in
+        let name = !lookup "pkg_name" in
+        let version = !lookup "pkg_version" in
+        Echo ([pf "let name = %S\n" name; pf "let version = %S\n" version ], "syntax/id.ml")
+      )
 
 let _ = Ocamlbuild_plugin.dispatch (fun hook ->
-  dispatch_default hook;
-  match hook with
-    | After_rules ->
-      (* Internal syntax extension *)
-      List.iter
-        (fun (dir,base) ->
-          let tag = "pa_" ^ base and file = dir ^ "pa_" ^ base ^ ".cma" in
-          flag ["ocaml"; "compile"; tag] & S[A"-ppopt"; A file];
-          flag ["ocaml"; "ocamldep"; tag] & S[A"-ppopt"; A file];
-          flag ["ocaml"; "doc"; tag] & S[A"-ppopt"; A file];
-          dep ["ocaml"; "ocamldep"; tag] [file])
-        ["syntax/", "deriving";
-         "syntax/classes/","deriving_classes"];
-    | _ -> ())
+    let myenv =
+      BaseEnvLight.load
+        ~filename:MyOCamlbuildBase.env_filename
+        ~allow_empty:true
+        ()
+    in
+    lookup := (fun name -> BaseEnvLight.var_get name myenv);
+    dispatch_default hook;
+    match hook with
+      | After_rules ->
+        (* Internal syntax extension *)
+        List.iter
+          (fun (dir,base) ->
+             let tag = "pa_" ^ base and file = dir ^ "pa_" ^ base ^ ".cma" in
+             flag ["ocaml"; "compile"; tag] & S[A"-ppopt"; A file];
+             flag ["ocaml"; "ocamldep"; tag] & S[A"-ppopt"; A file];
+             flag ["ocaml"; "doc"; tag] & S[A"-ppopt"; A file];
+             dep ["ocaml"; "ocamldep"; tag] [file])
+          ["syntax/","deriving_common";
+           "syntax/", "deriving";
+           "syntax/classes/","deriving_classes"];
+      | _ -> ())

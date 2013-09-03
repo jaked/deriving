@@ -26,6 +26,7 @@ Library "deriving-num"
   FindlibName : num
   Modules:    Deriving_num
   XMETAEnable: false
+  BuildDepends: deriving.syntax.std,deriving.syntax.classes
 
 Library "pa_deriving_common"
   Path:       syntax
