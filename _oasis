@@ -3,12 +3,12 @@ Name:        deriving
 Version:     0.5
 Synopsis:    Extension to OCaml for deriving functions from type declarations
 Authors:     Jeremy Yallop
-License:     LGPL-2.1 with OCaml linking exception
-Plugins:     META (0.3), StdFiles (0.3), DevFiles (0.3)
+License:     MIT
+Plugins:     META (0.3), DevFiles (0.3)
+BuildTools:      ocamlbuild
 
 Library deriving
   Path:            lib
-  BuildTools:      ocamlbuild
   Modules:         Deriving_Show, Deriving_Eq, Deriving_Bounded,
     Deriving_Enum, Deriving_monad, Deriving_Dump, Deriving_Typeable,
     Deriving_Pickle, Deriving_Functor, Deriving_Default
@@ -18,7 +18,6 @@ Library deriving
 
 Library "deriving-num"
   Path:       lib
-  BuildTools: ocamlbuild
   FindlibParent: deriving
   FindlibName : num
   Modules:    Deriving_num
@@ -26,7 +25,6 @@ Library "deriving-num"
 
 Library "pa_deriving_common"
   Path:       syntax
-  BuildTools: ocamlbuild
   FindlibParent: deriving
   FindlibName : syntax
   Pack: true
@@ -38,7 +36,6 @@ Library "pa_deriving_common"
 
 Library "pa_derving"
   Path:       syntax
-  BuildTools: ocamlbuild
   FindlibParent: pa_deriving_common
   FindlibName : std
   BuildDepends: deriving.syntax
@@ -50,7 +47,6 @@ Library "pa_derving"
 
 Library "pa_deriving_tc"
   Path:       syntax
-  BuildTools: ocamlbuild
   FindlibParent: pa_deriving_common
   FindlibName : tc
   BuildDepends: deriving.syntax,type_conv
@@ -62,7 +58,6 @@ Library "pa_deriving_tc"
 
 Library "pa_deriving_classes"
   Path:       syntax/classes
-  BuildTools: ocamlbuild
   FindlibParent: pa_deriving_common
   FindlibName : classes
   Modules:    Show_class, Dump_class, Enum_class, Bounded_class, Eq_class,
