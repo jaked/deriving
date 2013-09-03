@@ -6,6 +6,7 @@ Authors:     Jeremy Yallop
 License:     MIT
 Plugins:     META (0.3), DevFiles (0.3)
 BuildTools:      ocamlbuild
+FilesAB: syntax/id.ml.ab
 
 Flag tc
   Description: type-conv support

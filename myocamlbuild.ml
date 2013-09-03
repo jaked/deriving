@@ -499,25 +499,7 @@ let dispatch_default = MyOCamlbuildBase.dispatch_default package_default;;
 # 500 "myocamlbuild.ml"
 (* OASIS_STOP *)
 
-let lookup = ref (fun _ -> assert false)
-
-let id_dot_ml_rule = Ocamlbuild_plugin.rule "id.ml"
-    ~dep:MyOCamlbuildBase.env_filename
-    ~prod:"syntax/id.ml" (fun env build ->
-        let pf x = Printf.sprintf x in
-        let name = !lookup "pkg_name" in
-        let version = !lookup "pkg_version" in
-        Echo ([pf "let name = %S\n" name; pf "let version = %S\n" version ], "syntax/id.ml")
-      )
-
 let _ = Ocamlbuild_plugin.dispatch (fun hook ->
-    let myenv =
-      BaseEnvLight.load
-        ~filename:MyOCamlbuildBase.env_filename
-        ~allow_empty:true
-        ()
-    in
-    lookup := (fun name -> BaseEnvLight.var_get name myenv);
     dispatch_default hook;
     match hook with
       | After_rules ->

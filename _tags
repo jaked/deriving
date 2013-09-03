@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: c8e9fd61b10c24d51a2e39af5fe97aab)
+# DO NOT EDIT (digest: 6c1818365b4189454505a26f26c5718f)
 # Ignore VCS directories, you can use the same kind of rule outside 
 # OASIS_START/STOP if you want to exclude directories that contains 
 # useless stuff for the build process
@@ -15,6 +15,7 @@
 "_darcs": not_hygienic
 # Library pa_deriving_common
 "syntax/pa_deriving_common.cmxs": use_pa_deriving_common
+"syntax/id.cmx": for-pack(Pa_deriving_common)
 "syntax/utils.cmx": for-pack(Pa_deriving_common)
 "syntax/type.cmx": for-pack(Pa_deriving_common)
 "syntax/defs.cmx": for-pack(Pa_deriving_common)
