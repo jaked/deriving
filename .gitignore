@@ -1,4 +1,3 @@
-.*.deps
 *.cm[iaox]
 *.cmxa
 *.cmxs
@@ -9,10 +8,6 @@
 ._*
 *~
 #*#
-tests/tests
-files/META
-files/META.deriving
-syntax/deriving
-syntax/deriving.opt
-syntax/id.ml
-syntax/defs.ml
+_build
+setup.log
+setup.data

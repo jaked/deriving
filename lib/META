@@ -1,0 +1,52 @@
+# OASIS_START
+# DO NOT EDIT (digest: 71d806d955a6f3bec2f653ce6d6dff10)
+version = "0.5"
+description =
+"Extension to OCaml for deriving functions from type declarations"
+requires = "deriving.syntax.std deriving.syntax.classes"
+archive(byte) = "deriving.cma"
+archive(byte, plugin) = "deriving.cma"
+archive(native) = "deriving.cmxa"
+archive(native, plugin) = "deriving.cmxs"
+exists_if = "deriving.cma"
+package "syntax" (
+ version = "0.5"
+ description = "Deriving syntax"
+ requires = "camlp4"
+ archive(syntax, preprocessor) = "pa_deriving_common.cma"
+ archive(syntax, toploop) = "pa_deriving_common.cma"
+ exists_if = "pa_deriving_common.cma"
+ package "tc" (
+  version = "0.5"
+  description = "Deriving syntax"
+  requires = "camlp4"
+  archive(syntax, preprocessor) = "pa_deriving_tc.cma"
+  archive(syntax, toploop) = "pa_deriving_tc.cma"
+  exists_if = "pa_deriving_tc.cma"
+ )
+ 
+ package "std" (
+  version = "0.5"
+  description = "Deriving syntax"
+  requires = "camlp4"
+  archive(syntax, preprocessor) = "pa_derving.cma"
+  archive(syntax, toploop) = "pa_derving.cma"
+  exists_if = "pa_derving.cma"
+ )
+ 
+ package "classes" (
+  version = "0.5"
+  description = "Deriving syntax"
+  requires = "camlp4"
+  archive(syntax, preprocessor) = "pa_deriving_classes.cma"
+  archive(syntax, toploop) = "pa_deriving_classes.cma"
+  exists_if = "pa_deriving_classes.cma"
+ )
+)
+
+# OASIS_STOP
+
+archive(byte, pkg_num) = "deriving_num.cma"
+archive(byte, plugin, pkg_num) = "deriving_num.cma"
+archive(native, pkg_num) = "deriving_num.cmxa"
+archive(native, plugin, pkg_num) = "deriving_num.cmxs"

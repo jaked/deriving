@@ -1,0 +1,5 @@
+(* OASIS_START *)
+(* DO NOT EDIT (digest: 19a8d7143ad30b638dbb926e62dc566b) *)
+Authors of deriving
+Jeremy Yallop
+(* OASIS_STOP *)
