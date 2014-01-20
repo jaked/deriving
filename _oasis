@@ -1,12 +1,13 @@
-OASISFormat: 0.3
+OASISFormat: 0.4
 Name:        deriving
-Version:     0.5
+OCamlVersion: >= 3.12.1
+Version:     0.6
 Synopsis:    Extension to OCaml for deriving functions from type declarations
 Authors:     Jeremy Yallop
 License:     MIT
-Plugins:     META (0.3), DevFiles (0.3)
-BuildTools:      ocamlbuild
-FilesAB: syntax/id.ml.ab
+Plugins:     META (0.4), DevFiles (0.4)
+BuildTools:  ocamlbuild
+FilesAB:     syntax/common/id.ml.ab
 
 Flag tc
   Description: type-conv support
@@ -19,63 +20,61 @@ Library deriving
     Deriving_Pickle, Deriving_Functor, Deriving_Default
   InternalModules: Deriving_interned, Deriving_dynmap
   FindlibName : deriving
-  BuildDepends: deriving.syntax.std,deriving.syntax.classes
+  BuildDepends: deriving.syntax.base,deriving.syntax.classes,deriving.syntax
 
 Library "deriving-num"
-  Path:       lib
+  Path:          lib
   FindlibParent: deriving
-  FindlibName : num
-  Modules:    Deriving_num
-  XMETAEnable: false
-  BuildDepends: deriving.syntax.std,deriving.syntax.classes
+  FindlibName :  num
+  Modules:       Deriving_num
+  BuildDepends:  deriving
 
 Library "pa_deriving_common"
-  Path:       syntax
-  FindlibParent: deriving
-  FindlibName : syntax
-  Pack: true
-  Modules:    Id, Utils, Type, Defs, Clusters, Base, Extend
-  BuildDepends: camlp4,camlp4.extend,optcomp
-  XMETAType: syntax
+  Path:          syntax/common
+  FindlibParent: pa_deriving
+  FindlibName :  base
+  Pack:          true
+  Modules:       Id, Utils, Type, Defs, Clusters, Base, Extend
+  BuildDepends:  camlp4,camlp4.extend
+  XMETAType:        syntax
   XMETADescription: Deriving syntax
-  XMETARequires: camlp4
+  XMETARequires:    camlp4
 
 Library "pa_deriving"
-  Path:       syntax
-  FindlibParent: pa_deriving_common
-  FindlibName : std
-  BuildDepends: deriving.syntax
-  Modules:    Pa_deriving
-  XMETAType: syntax
+  Path:          syntax/std
+  FindlibParent: deriving
+  FindlibName :  syntax
+  BuildDepends:  camlp4.extend,deriving.syntax.base
+  Modules:       Pa_deriving
+  XMETAType:        syntax
   XMETADescription: Deriving syntax
-  XMETAExtraLines: requires(syntax) = "deriving.syntax"
-  XMETARequires: camlp4
+  XMETAExtraLines:  requires(syntax) = "deriving.syntax.base"
+  XMETARequires:    camlp4
 
 Library "pa_deriving_tc"
-  Path:       syntax
-  Build$: flag(tc)
-  Install$: flag(tc)
-  FindlibParent: pa_deriving_common
-  FindlibName : tc
-  BuildDepends: deriving.syntax,type_conv
-  Modules:    Pa_deriving_tc
-  XMETAType: syntax
+  Path:          syntax/tc
+  Build$:        flag(tc)
+  Install$:      flag(tc)
+  FindlibParent: pa_deriving
+  FindlibName :  tc
+  BuildDepends:  deriving.syntax.base,type_conv
+  Modules:       Pa_deriving_tc
+  XMETAType:        syntax
   XMETADescription: Deriving syntax
-  XMETAExtraLines: requires(syntax) = "deriving.syntax"
-  XMETARequires: camlp4
+  XMETAExtraLines:  requires(syntax) = "deriving.syntax.base"
+  XMETARequires:    camlp4
 
 Library "pa_deriving_classes"
-  Path:       syntax/classes
-  FindlibParent: pa_deriving_common
-  FindlibName : classes
-  Modules:    Show_class, Dump_class, Enum_class, Bounded_class, Eq_class,
-    Typeable_class, Pickle_class, Functor_class, Default_class
-  BuildDepends: deriving.syntax
-  XMETAType: syntax
+  Path:          syntax/classes
+  FindlibParent: pa_deriving
+  FindlibName :  classes
+  Modules:       Show_class, Dump_class, Enum_class, Bounded_class, Eq_class,
+                 Typeable_class, Pickle_class, Functor_class, Default_class
+  BuildDepends:  deriving.syntax.base
+  XMETAType:        syntax
   XMETADescription: Deriving syntax
-  XMETAExtraLines: requires(syntax) = "deriving.syntax"
-  XMETARequires: camlp4
-
+  XMETAExtraLines:  requires(syntax) = "deriving.syntax.base"
+  XMETARequires:    camlp4
 
 Executable test_notc
   Path: tests
