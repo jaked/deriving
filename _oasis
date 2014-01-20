@@ -28,6 +28,7 @@ Library "deriving-num"
   FindlibName :  num
   Modules:       Deriving_num
   BuildDepends:  deriving
+  XMETAEnable: false
 
 Library "pa_deriving_common"
   Path:          syntax/common
@@ -61,7 +62,7 @@ Library "pa_deriving_tc"
   Modules:       Pa_deriving_tc
   XMETAType:        syntax
   XMETADescription: Deriving syntax
-  XMETAExtraLines:  requires(syntax) = "deriving.syntax.base"
+  XMETAExtraLines:  requires(syntax) = "deriving.syntax.base,type_conv"
   XMETARequires:    camlp4
 
 Library "pa_deriving_classes"

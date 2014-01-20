@@ -1,5 +1,5 @@
 # OASIS_START
-# DO NOT EDIT (digest: 67700e1229a7d068757e0f46fbc68b9c)
+# DO NOT EDIT (digest: 3dee8ab804cf5f97f92b5c843b55f217)
 version = "0.6"
 description =
 "Extension to OCaml for deriving functions from type declarations"
@@ -31,7 +31,7 @@ package "syntax" (
   archive(syntax, byte, plugin) = "pa_deriving_tc.cma"
   archive(syntax, native) = "pa_deriving_tc.cmxa"
   archive(syntax, native, plugin) = "pa_deriving_tc.cmxs"
-  requires(syntax) = "deriving.syntax.base"
+  requires(syntax) = "deriving.syntax.base,type_conv"
   exists_if = "pa_deriving_tc.cma"
  )
  
@@ -63,17 +63,6 @@ package "syntax" (
  )
 )
 
-package "num" (
- version = "0.6"
- description =
- "Extension to OCaml for deriving functions from type declarations"
- requires = "deriving"
- archive(byte) = "deriving-num.cma"
- archive(byte, plugin) = "deriving-num.cma"
- archive(native) = "deriving-num.cmxa"
- archive(native, plugin) = "deriving-num.cmxs"
- exists_if = "deriving-num.cma"
-)
 # OASIS_STOP
 
 archive(byte, pkg_num) = "deriving_num.cma"
