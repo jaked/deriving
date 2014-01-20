@@ -65,6 +65,12 @@ package "syntax" (
 
 # OASIS_STOP
 
+package "syntax_tc" (
+  version = "0.6"
+  requires = "deriving.syntax.tc"
+  requires(syntax) = "deriving.syntax.tc"
+)
+
 archive(byte, pkg_num) = "deriving_num.cma"
 archive(byte, plugin, pkg_num) = "deriving_num.cma"
 archive(native, pkg_num) = "deriving_num.cmxa"
