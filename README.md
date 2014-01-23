@@ -51,7 +51,7 @@ Examples:
  # #camlp4o;;
 	Camlp4 Parsing version 3.12.0
 
- # #require "deriving.syntax.std";;
+ # #require "deriving.syntax";;
  # type t = A of int | B of t deriving (Show);;
  type t = A of int | B of t
  module rec Show_t : sig ... end
