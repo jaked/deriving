@@ -1,5 +1,5 @@
-Deriving
-================
+Deriving (was Deriving-ocsigen)
+===============================
 
 This release of deriving is based on the library by Jeremy Yallop. See:
 
@@ -72,7 +72,7 @@ Examples with type-conv:
 	Camlp4 Parsing version 3.12.0
 
  # #require "type-conv";;
- # #require "deriving.syntax.tc";;
+ # #require "deriving.syntax_tc";;
  # type t = A of int | B of t with show;;
  type t = A of int | B of t
  module rec Show_t : sig ... end
