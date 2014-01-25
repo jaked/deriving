@@ -14,8 +14,8 @@ default: build
 # Setup for the development version
 setup-dev.exe: _oasis setup.ml
 	grep -v '^#' setup.ml > setup_dev.ml
-	ocamlfind ocamlopt -o $@ -linkpkg -package ocamlbuild,oasis.dynrun setup_dev.ml || \
-	  ocamlfind ocamlc -o $@ -linkpkg -package ocamlbuild,oasis.dynrun setup_dev.ml || true
+	ocamlfind ocamlopt -o $@ -linkpkg -package ocamlbuild,oasis.dynrun,compiler-libs.toplevel setup_dev.ml || \
+	  ocamlfind ocamlc -o $@ -linkpkg -package ocamlbuild,oasis.dynrun,compiler-libs.toplevel setup_dev.ml || true
 	rm -f setup_dev.*
 
 # Setup for the release

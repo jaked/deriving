@@ -1,4 +1,0 @@
-<common/*.ml{,i}>:syntax(camlp4o),package(optcomp),package(camlp4.quotations.o)
-<common/type.ml{,i}>:-package(camlp4.quotations.o),package(camlp4.quotations.r)
-<std/*.ml{,i}>:syntax(camlp4o),package(optcomp),package(camlp4.quotations.o)
-<classes/*.ml{,i}>:syntax(camlp4o),package(camlp4,camlp4.quotations.o)
