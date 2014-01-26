@@ -3,6 +3,9 @@ description = "Deriving"
 
 requires = "$(pkg_name).runtime, $(pkg_name).syntax"
 
+## HACK...
+archive(syntax, preprocessor) = "-ignore dummy"
+
 package "runtime" (
 
   archive(byte) = "deriving.cma"
@@ -16,6 +19,9 @@ package "syntax" (
 
   requires = "$(pkg_name).syntax.std, $(pkg_name).syntax.classes"
 
+  ## HACK...
+  archive(syntax, preprocessor) = "-ignore dummy"
+
   package "classes" (
 
     description = "Deriving syntax extension (predefined classes)"
@@ -25,25 +31,17 @@ package "syntax" (
 
     archive(syntax, preprocessor) = "pa_deriving_classes.cma"
     archive(syntax, toploop) = "pa_deriving_classes.cma"
-    archive(syntax, byte) = "pa_deriving_classes.cma"
-    archive(syntax, byte, plugin) = "pa_deriving_classes.cma"
-    archive(syntax, native) = "pa_deriving_classes.cmxa"
-    archive(syntax, native, plugin) = "pa_deriving_classes.cmxs"
 
-    requires(syntax) = "$(pkg_name).syntax.common"
+    requires = "$(pkg_name).syntax.common"
 
   )
 
   package "common" (
 
-    requires(syntax) = "unix"
+    requires = "unix, camlp4"
 
     archive(syntax, preprocessor) = "pa_deriving_common.cma"
     archive(syntax, toploop) = "pa_deriving_common.cma"
-    archive(syntax, byte) = "pa_deriving_common.cma"
-    archive(syntax, byte, plugin) = "pa_deriving_common.cma"
-    archive(syntax, native) = "pa_deriving_common.cmxa"
-    archive(syntax, native, plugin) = "pa_deriving_common.cmxs"
 
   )
 
@@ -56,12 +54,8 @@ package "syntax" (
 
     archive(syntax, preprocessor) = "pa_deriving_std.cma"
     archive(syntax, toploop) = "pa_deriving_std.cma"
-    archive(syntax, byte) = "pa_deriving_std.cma"
-    archive(syntax, byte, plugin) = "pa_deriving_std.cma"
-    archive(syntax, native) = "pa_deriving_std.cmxa"
-    archive(syntax, native, plugin) = "pa_deriving_std.cmxs"
 
-    requires(syntax) = "$(pkg_name).syntax.common"
+    requires = "$(pkg_name).syntax.common, camlp4"
 
   )
 
@@ -74,12 +68,8 @@ package "syntax" (
 
     archive(syntax, preprocessor) = "pa_deriving_tc.cma"
     archive(syntax, toploop) = "pa_deriving_tc.cma"
-    archive(syntax, byte) = "pa_deriving_tc.cma"
-    archive(syntax, byte, plugin) = "pa_deriving_tc.cma"
-    archive(syntax, native) = "pa_deriving_tc.cmxa"
-    archive(syntax, native, plugin) = "pa_deriving_tc.cmxs"
 
-    requires(syntax) = "$(pkg_name).syntax.common, type_conv"
+    requires = "$(pkg_name).syntax.common, type_conv"
 
   )
 
