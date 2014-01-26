@@ -23,7 +23,7 @@ Library "deriving"
   InternalModules : Deriving_interned, Deriving_dynmap
   BuildDepends    : deriving.syntax
 
-Library "deriving-num"
+Library "deriving_num"
   Path          : lib
   FindlibParent : deriving
   FindlibName   : num
