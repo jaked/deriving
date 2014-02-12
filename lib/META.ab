@@ -77,8 +77,12 @@ package "syntax" (
 
 package "tc" (
   requires = "$(pkg_name).runtime, $(pkg_name).syntax_tc"
+  ## HACK...
+  archive(syntax, preprocessor) = "-ignore dummy"
 )
 
 package "syntax_tc" (
   requires = "$(pkg_name).syntax.tc, $(pkg_name).syntax.classes"
+  ## HACK...
+  archive(syntax, preprocessor) = "-ignore dummy"
 )
