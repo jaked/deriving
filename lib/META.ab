@@ -6,6 +6,8 @@ requires = "$(pkg_name).runtime, $(pkg_name).syntax"
 ## HACK...
 archive(syntax, preprocessor) = "-ignore dummy"
 
+error(pkg_type_conv, pkg_deriving) = "Could not be loaded together with 'type_conv'. Please use $(pkg_name).tc instead."
+
 package "runtime" (
 
   archive(byte) = "deriving.cma"
@@ -21,6 +23,8 @@ package "syntax" (
 
   ## HACK...
   archive(syntax, preprocessor) = "-ignore dummy"
+
+  error(pkg_type_conv, pkg_deriving.syntax, -pkg_deriving) = "Could not be loaded together with 'type_conv'. Please use $(pkg_name).syntax_tc instead."
 
   package "classes" (
 
@@ -49,6 +53,8 @@ package "syntax" (
 
     description = "Deriving syntax extension"
     version = "$(pkg_version)"
+
+    error(pkg_type_conv, -pkg_deriving.syntax, -pkg_deriving) = "Could not be loaded together with 'type_conv'. Please use $(pkg_name).syntax.tc instead."
 
     exists_if = "pa_deriving_std.cma"
 
