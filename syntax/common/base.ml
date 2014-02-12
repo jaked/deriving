@@ -685,17 +685,19 @@ let derive_sig _loc decls class_builder =
   let module Class = (val class_builder : InnerClassBuilder)(Loc) in
   display_errors _loc Class.generate_sigs decls
 
-let generators : (string, (module InnerClassBuilder)) Hashtbl.t =
+let generators : (string, (module ClassDescription) * (module InnerClassBuilder)) Hashtbl.t =
   Hashtbl.create 15
 let hashtbl_add desc deriver =
   let module Desc = (val desc : ClassDescription) in
-  Hashtbl.add generators Desc.classname deriver
+  Hashtbl.add generators Desc.classname (desc, deriver)
 let register_hook = ref [hashtbl_add]
-let add_register_hook f = register_hook := f :: !register_hook
+let add_register_hook (f : ((module ClassDescription) -> generator -> unit)) =
+  Hashtbl.iter (fun _ (desc, deriver) -> f desc deriver) generators;
+  register_hook := f :: !register_hook
 let register desc deriver =
   List.iter (fun f -> f desc deriver) !register_hook
 let find classname =
-  try Hashtbl.find generators classname
+  try snd (Hashtbl.find generators classname)
   with Not_found -> raise (NoSuchClass classname)
 let is_registered classname = Hashtbl.mem generators classname
 
