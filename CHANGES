@@ -1,3 +1,9 @@
+== 0.6
+
+  * Added a 'Default' class (Hugo Heuzard)
+  * Allow private variant in the 'Functor' class (Pierre Chambart)
+  * Switch build system to oasis and improved META
+
 == 0.5-ocsigen
 
   * Experimental minimalistic support of GADT
