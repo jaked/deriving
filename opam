@@ -1,0 +1,24 @@
+opam-version: "1"
+maintainer: "dev@ocsigen.org"
+version: "dev"
+build: [
+  [ make "setup.exe" ]
+  [ "./setup.exe" "-configure" "--prefix" prefix "--%{type_conv:enable}%-tc" ]
+  [ "./setup.exe" "-build" ]
+  [ "./setup.exe" "-install" ]
+]
+remove: [
+  [ "ocamlfind" "remove" "deriving" ]
+]
+depends: [
+  "ocamlfind"
+  "optcomp"
+  ## OASIS is not required in released version
+  "oasis" {>= "0.4.4"}
+]
+depopts: [
+  "type_conv"
+]
+conflicts: [
+  "type_conv" {>= "108.07.00"}
+]
