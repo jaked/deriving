@@ -1,5 +1,5 @@
 opam-version: "1"
-maintainer: "gregoire.henry@inria.fr"
+maintainer: "dev@ocsigen.org"
 build: [
   ["%{make}%"]
   ["%{make}%" "install"]
@@ -10,6 +10,7 @@ remove: [
 depends: [
   "ocamlfind"
   "optcomp"
+  "oasis" {>= "0.4.3"}
 ]
 depopts: [
   "type_conv" {>= "108.07.00"}
