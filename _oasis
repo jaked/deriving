@@ -76,6 +76,7 @@ Executable test_tc
   CompiledObject : best
   MainIs         : tc.ml
   BuildDepends   : deriving,type_conv
+  Build$: flag(tc)
 
 Test std
   TestTools : test
