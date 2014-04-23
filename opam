@@ -1,11 +1,10 @@
 opam-version: "1"
 maintainer: "dev@ocsigen.org"
-version: "dev"
+version: "9999"
 build: [
-  [ make "setup.exe" ]
-  [ "./setup.exe" "-configure" "--prefix" prefix "--%{type_conv:enable}%-tc" ]
-  [ "./setup.exe" "-build" ]
-  [ "./setup.exe" "-install" ]
+  [ "./configure" "--prefix" prefix "--%{type_conv:enable}%-tc" ]
+  [ make ]
+  [ make "install" ]
 ]
 remove: [
   [ "ocamlfind" "remove" "deriving" ]
