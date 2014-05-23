@@ -1,0 +1,96 @@
+version = "$(pkg_version)"
+description = "Deriving"
+
+requires = "$(pkg_name).runtime, $(pkg_name).syntax"
+requires(syntax, preprocessor) = "$(pkg_name).syntax"
+archive(syntax, preprocessor) = "-ignore dummy"
+
+error(pkg_type_conv, pkg_deriving) = "Could not be loaded together with 'type_conv'. Please use $(pkg_name).tc instead."
+
+package "runtime" (
+
+  archive(byte) = "deriving.cma"
+  archive(native) = "deriving.cmxa"
+  archive(byte, pkg_num) += "deriving_num.cma"
+  archive(native, pkg_num) += "deriving_num.cmxa"
+
+)
+
+package "syntax" (
+
+  requires(syntax, preprocessor) = "$(pkg_name).syntax.std, $(pkg_name).syntax.classes"
+  requires(syntax, toploop) = "$(pkg_name).syntax.std, $(pkg_name).syntax.classes"
+  archive(syntax, preprocessor) = "-ignore dummy"
+
+  error(pkg_type_conv, pkg_deriving.syntax, -pkg_deriving) = "Could not be loaded together with 'type_conv'. Please use $(pkg_name).syntax_tc instead."
+
+  package "common" (
+
+    requires(syntax, preprocessor) = "unix, camlp4"
+    requires(syntax, toploop) = "unix, camlp4"
+
+    archive(syntax, preprocessor) = "pa_deriving_common.cma"
+    archive(syntax, toploop) = "pa_deriving_common.cma"
+
+  )
+
+  package "std" (
+
+    description = "Deriving syntax extension"
+    version = "$(pkg_version)"
+
+    requires(syntax, preprocessor) = "$(pkg_name).syntax.common"
+    requires(syntax, toploop) = "$(pkg_name).syntax.common"
+
+    error(pkg_type_conv, -pkg_deriving.syntax, -pkg_deriving) = "Could not be loaded together with 'type_conv'. Please use $(pkg_name).syntax.tc instead."
+
+    exists_if = "pa_deriving_std.cma"
+
+    archive(syntax, preprocessor) = "pa_deriving_std.cma"
+    archive(syntax, toploop) = "pa_deriving_std.cma"
+
+  )
+
+  package "tc" (
+
+    description = "Deriving syntax extension (type_conv compatible syntax)"
+    version = "$(pkg_version)"
+
+    requires(syntax, preprocessor) = "$(pkg_name).syntax.common, type_conv"
+    requires(syntax, toploop) = "$(pkg_name).syntax.common, type_conv"
+
+    exists_if = "pa_deriving_tc.cma"
+
+    archive(syntax, preprocessor) = "pa_deriving_tc.cma"
+    archive(syntax, toploop) = "pa_deriving_tc.cma"
+
+  )
+
+  package "classes" (
+
+    description = "Deriving syntax extension (predefined classes)"
+    version = "$(pkg_version)"
+
+    requires(syntax, preprocessor) = "$(pkg_name).syntax.common"
+    requires(syntax, toploop) = "$(pkg_name).syntax.common"
+
+    exists_if = "pa_deriving_classes.cma"
+
+    archive(syntax, preprocessor) = "pa_deriving_classes.cma"
+    archive(syntax, toploop) = "pa_deriving_classes.cma"
+
+  )
+
+)
+
+package "tc" (
+  requires = "$(pkg_name).runtime, $(pkg_name).syntax_tc"
+  requires(syntax, preprocessor) = "$(pkg_name).syntax_tc"
+  archive(syntax, preprocessor) = "-ignore dummy"
+)
+
+package "syntax_tc" (
+  requires(syntax, preprocessor) = "$(pkg_name).syntax.tc, $(pkg_name).syntax.classes"
+  requires(syntax, toploop) = "$(pkg_name).syntax.tc, $(pkg_name).syntax.classes"
+  archive(syntax, preprocessor) = "-ignore dummy"
+)

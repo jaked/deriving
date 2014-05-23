@@ -1,0 +1,92 @@
+OASISFormat: 0.4
+Name:        deriving
+OCamlVersion: >= 3.12.1
+Version:     0.7-dev
+Synopsis:    Extension to OCaml for deriving functions from type declarations
+Authors:     Jeremy Yallop
+License:     MIT
+BuildTools:  ocamlbuild
+FilesAB:     syntax/common/id.ml.ab,
+             lib/META.ab
+Plugins: DevFiles (0.4)
+AlphaFeatures: compiled_setup_ml
+
+Flag tc
+  Description: type-conv support
+  Default: false
+
+Library "deriving"
+  Path            : lib
+  FindlibName     : deriving
+  Modules         : Deriving_Show, Deriving_Eq, Deriving_Bounded,
+                    Deriving_Enum, Deriving_monad, Deriving_Dump,
+                    Deriving_Typeable, Deriving_Pickle,
+                    Deriving_Functor, Deriving_Default
+  InternalModules : Deriving_interned, Deriving_dynmap
+  BuildDepends    : deriving.syntax
+
+Library "deriving_num"
+  Path          : lib
+  FindlibParent : deriving
+  FindlibName   : num
+  Modules       : Deriving_num
+  BuildDepends  : deriving
+
+Library "pa_deriving_classes"
+  Path          : syntax/classes
+  FindlibParent : deriving
+  FindlibName   : syntax
+  Modules       : Show_class, Dump_class, Enum_class, Bounded_class,
+                  Eq_class, Typeable_class, Pickle_class,
+                  Functor_class, Default_class
+  BuildDepends  : deriving.syntax.std
+
+Library "pa_deriving_common"
+  Path          : syntax/common
+  FindlibParent : pa_deriving_classes
+  FindlibName   : common
+  Pack          : true
+  Modules       : Id, Utils, Type, Defs, Clusters, Base, Extend
+  BuildDepends  : camlp4,camlp4.extend,camlp4.quotations.o,optcomp
+
+Library "pa_deriving_std"
+  Path          : syntax/std
+  FindlibParent : pa_deriving_classes
+  FindlibName   : std
+  Modules       : Pa_deriving_std
+  BuildDepends  : deriving.syntax.common,optcomp,camlp4.quotations.o
+
+Library "pa_deriving_tc"
+  Path          : syntax/tc
+  FindlibParent : pa_deriving_classes
+  FindlibName   : tc
+  Modules       : Pa_deriving_tc
+  BuildDepends  : deriving.syntax.common,type_conv
+  Build$: flag(tc)
+  Install$: flag(tc)
+
+Executable test
+  Path           : tests/std
+  CompiledObject : best
+  MainIs         : notc.ml
+  BuildDepends   : deriving,optcomp
+  Install        : false
+  Build$: flag(tests)
+
+Executable test_tc
+  Path           : tests/tc
+  Install        : false
+  CompiledObject : best
+  MainIs         : tc.ml
+  BuildDepends   : deriving,type_conv
+  Build$: flag(tests) && flag(tc)
+
+Test std
+  TestTools : test
+  Command   : $test
+  Run$: flag(tests)
+
+Test tc
+  TestTools : test_tc
+  Command   : $test_tc
+  Run$: flag(tests) && flag(tc)

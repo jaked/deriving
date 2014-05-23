@@ -1,22 +1,53 @@
-------------------------------------------------------------------------------
-0.1.1
+== 0.6
 
-Changes from 0.1:
+  * Added a 'Default' class (Hugo Heuzard)
+  * Allow private variant in the 'Functor' class (Pierre Chambart)
+  * Switch build system to oasis and improved META
+
+== 0.5-ocsigen
+
+  * Experimental minimalistic support of GADT
+  * Allows to register predefined instances
+
+== 0.4-ocsigen
+
+  * Compatibility with typeconv >= 108.07.00
+
+== 0.3-ocsigen
+
+  * Use "lazy first-order module" instead of "recursive module" to be
+    compatible with {{{js_of_ocaml}}}.
+  * Be less restrictive with mutually recursive type definition
+  * Split runtime into deriving.cma and deriving_num.cma
+
+  * Class:
+  ** Typeable: use OCaml's lazy for {{{type_rep}}}
+  ** Show: added separators to {{{map}}} and {{{set}}}
+  ** Show, Dump and Eq: Allow polymorphic type fields.
+
+== 0.2-ocsigen
+
+  * Add compatibility with ocamlfind
+  * Add a type-conv compatibility mode
+  * Simplify the definition of new class
+
+  * Syntax: Add {{{Class<typ>}}} in module_expr.
+
+  * Small bug fixes in class:
+  ** Show: Added parentheses around tuples.
+  ** Pickle: remove warning in generated code.
+
+== 0.1.1
 
   * Renamed serialisation classes:
-
-    Pickle -> Dump
-    Shelve -> Pickle
-
+  ** Pickle -> Dump
+  ** Shelve -> Pickle
   * Made Dump and Pickle interface compatible with each other and more
     compatible with Marshal.
-
   * Bugfix in the tag hash function on 64-bit platforms.
-
   * Fixed a bug with a functor application quotation that used revised
     syntax.
 
-------------------------------------------------------------------------------
-0.1
+== 0.1
 
-Initial release
+  * Initial release

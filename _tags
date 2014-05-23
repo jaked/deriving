@@ -1,0 +1,9 @@
+# OASIS_START
+# OASIS_STOP
+<**/*.ml{,i}>:syntax(camlp4o)
+<syntax/common/type.ml{,i}>:-package(camlp4.quotations.o)
+<syntax/common/type.ml{,i}>:package(camlp4.quotations.r)
+<tests/tc/*.ml{,i}>:-use_pa_deriving_std
+<tests/tc/*.ml{,i}>:use_pa_deriving_tc
+## BUG in oasis: not generated when using 'oasis setup'
+"syntax/common/id.cmx": for-pack(Pa_deriving_common)

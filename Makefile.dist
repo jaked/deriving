@@ -1,0 +1,40 @@
+
+##
+## Usage:
+##
+## If the released version is tagged in the main repository, use:
+##
+##   make -f Makefile.dist
+##
+## If the tag has not been pushed, use:
+##
+##   make -f Makefile.dist REPO=${PWD}
+##
+## otherwise, use:
+##
+##   make -f Makefile.dist REPO=${PWD} VERSION=master
+##
+
+VERSION?=$(shell grep Version: _oasis | cut -d ' ' -f 2)
+REPO?=https://github.com/ocsigen/deriving
+
+all: dist sign
+
+dist:
+	@rm -rf deriving-${VERSION} \
+	        deriving-${VERSION}.tar.gz \
+	        deriving-${VERSION}.tar.gz.asc
+	git clone --local -b ${VERSION} ${REPO} deriving-${VERSION}
+	oasis -C deriving-${VERSION} setup
+	sed -i "s/SETUP := setup-dev.exe/SETUP := setup.exe/" \
+	    deriving-${VERSION}/Makefile
+	cd deriving-${VERSION} && rm -rf .git .gitignore Makefile.dist opam
+	tar cvzf deriving-${VERSION}.tar.gz deriving-${VERSION}
+	@rm -rf deriving-${VERSION}
+
+sign: deriving-${VERSION}.tar.gz.asc
+
+deriving-${VERSION}.tar.gz.asc: deriving-${VERSION}.tar.gz
+	gpg --armor -b $^
+
+.PHONY: dist sign
